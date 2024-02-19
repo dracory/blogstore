@@ -115,7 +115,7 @@ func (store *Store) PostCount(options PostQueryOptions) (int64, error) {
 }
 
 func (store *Store) PostTrash(post *Post) error {
-	post.SetStatus(POST_STATUS_DELETED)
+	post.SetStatus(POST_STATUS_TRASH)
 
 	return store.PostUpdate(post)
 }
@@ -236,25 +236,25 @@ func (store *Store) PostList(options PostQueryOptions) ([]Post, error) {
 	return list, nil
 }
 
-// func (store *Store) ExamSoftDelete(exam *Exam) error {
-// 	if exam == nil {
-// 		return errors.New("exam is nil")
-// 	}
+func (store *Store) PostSoftDelete(post *Post) error {
+	if post == nil {
+		return errors.New("post is nil")
+	}
 
-// 	exam.SetDeletedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	post.SetDeletedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
-// 	return store.ExamUpdate(exam)
-// }
+	return store.PostUpdate(post)
+}
 
-// func (store *Store) ExamSoftDeleteByID(id string) error {
-// 	exam, err := store.ExamFindByID(id)
+func (store *Store) PostSoftDeleteByID(id string) error {
+	post, err := store.PostFindByID(id)
 
-// 	if err != nil {
-// 		return err
-// 	}
+	if err != nil {
+		return err
+	}
 
-// 	return store.ExamSoftDelete(exam)
-// }
+	return store.PostSoftDelete(post)
+}
 
 func (store *Store) PostUpdate(post *Post) error {
 	if post == nil {
@@ -351,9 +351,8 @@ func (store *Store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 	}
 
 	if !options.WithDeleted {
-		q = q.Where(goqu.C("status").Neq(POST_STATUS_DELETED))
-
-		// q = q.Where(goqu.C("deleted_at").Eq(sb.NULL_DATETIME))
+		//q = q.Where(goqu.C("status").Neq(POST_STATUS_DELETED))
+		q = q.Where(goqu.C("deleted_at").Eq(sb.NULL_DATETIME))
 	}
 
 	return q

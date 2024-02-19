@@ -143,8 +143,8 @@ func (o *Post) IsPublished() bool {
 	return o.Status() == POST_STATUS_PUBLISHED
 }
 
-func (o *Post) IsDeleted() bool {
-	return o.Status() == POST_STATUS_DELETED
+func (o *Post) IsTrashed() bool {
+	return o.Status() == POST_STATUS_TRASH
 }
 
 func (o *Post) IsUnpublished() bool {

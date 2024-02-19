@@ -6,5 +6,8 @@ type StoreInterface interface {
 	PostDeleteByID(postID string) error
 	PostFindByID(id string) (*Post, error)
 	PostList(options PostQueryOptions) ([]Post, error)
+	PostSoftDelete(post *Post) error
+	PostSoftDeleteByID(postID string) error
+	PostTrash(post *Post) error
 	PostUpdate(post *Post) error
 }

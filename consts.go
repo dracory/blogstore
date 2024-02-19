@@ -6,7 +6,7 @@ const YES = "yes"
 const POST_STATUS_DRAFT = "draft"
 const POST_STATUS_PUBLISHED = "published"
 const POST_STATUS_UNPUBLISHED = "unpublished"
-const POST_STATUS_DELETED = "deleted"
+const POST_STATUS_TRASH = "trash"
 
 const POST_EDITOR_BLOCKAREA = "BlockArea"
 const POST_EDITOR_MARKDOWN = "Markdown"
