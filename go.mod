@@ -2,25 +2,23 @@ module github.com/gouniverse/blogstore
 
 go 1.22
 
-toolchain go1.22.0
-
 require (
 	github.com/doug-martin/goqu/v9 v9.19.0
-	github.com/golang-module/carbon/v2 v2.3.8
+	github.com/golang-module/carbon/v2 v2.3.12
 	github.com/gouniverse/dataobject v0.2.1
 	github.com/gouniverse/maputils v0.7.0
-	github.com/gouniverse/sb v0.3.0
+	github.com/gouniverse/sb v0.4.0
 	github.com/gouniverse/uid v1.5.0
 	github.com/gouniverse/utils v1.39.0
 	github.com/samber/lo v1.39.0
-	modernc.org/sqlite v1.29.1
+	modernc.org/sqlite v1.29.8
 )
 
 require (
 	github.com/darkoatanasovski/htmltags v1.0.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/georgysavva/scany v1.2.1 // indirect
-	github.com/google/uuid v1.5.0 // indirect
+	github.com/georgysavva/scany v1.2.2 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gouniverse/api v1.5.0 // indirect
 	github.com/gouniverse/crypto v0.1.0 // indirect
 	github.com/gouniverse/envenc v0.1.0 // indirect
@@ -33,16 +31,16 @@ require (
 	github.com/mingrammer/cfmt v1.1.0 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	golang.org/x/crypto v0.19.0 // indirect
-	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3 // indirect
-	golang.org/x/net v0.21.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
-	golang.org/x/term v0.17.0 // indirect
+	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f // indirect
+	golang.org/x/net v0.24.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	modernc.org/gc/v3 v3.0.0-20240107210532-573471604cb6 // indirect
-	modernc.org/libc v1.41.0 // indirect
+	modernc.org/gc/v3 v3.0.0-20240304020402-f0dba7c97c2b // indirect
+	modernc.org/libc v1.50.2 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
-	modernc.org/memory v1.7.2 // indirect
+	modernc.org/memory v1.8.0 // indirect
 	modernc.org/strutil v1.2.0 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
