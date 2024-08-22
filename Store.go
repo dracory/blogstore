@@ -96,8 +96,6 @@ func (store *Store) PostCount(options PostQueryOptions) (int64, error) {
 		return -1, err
 	}
 
-	// cfmt.Errorln(mapped)
-
 	if len(mapped) < 1 {
 		return -1, nil
 	}
@@ -136,7 +134,7 @@ func (store *Store) PostDeleteByID(id string) error {
 	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
 		Delete(store.postTableName).
 		Prepared(true).
-		Where(goqu.C("id").Eq(id)).
+		Where(goqu.C(COLUMN_ID).Eq(id)).
 		ToSQL()
 
 	if errSql != nil {
@@ -154,7 +152,7 @@ func (store *Store) PostDeleteByID(id string) error {
 
 func (store *Store) PostFindByID(id string) (*Post, error) {
 	if id == "" {
-		return nil, errors.New("exam id is empty")
+		return nil, errors.New("post id is empty")
 	}
 
 	list, err := store.PostList(PostQueryOptions{
@@ -277,7 +275,7 @@ func (store *Store) PostUpdate(post *Post) error {
 		Update(store.postTableName).
 		Prepared(true).
 		Set(dataChanged).
-		Where(goqu.C("id").Eq(post.ID())).
+		Where(goqu.C(COLUMN_ID).Eq(post.ID())).
 		ToSQL()
 
 	if errSql != nil {
@@ -300,31 +298,31 @@ func (store *Store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 		From(store.postTableName)
 
 	if options.ID != "" {
-		q = q.Where(goqu.C("id").Eq(options.ID))
+		q = q.Where(goqu.C(COLUMN_ID).Eq(options.ID))
 	}
 
 	if len(options.IDIn) > 0 {
-		q = q.Where(goqu.C("id").In(options.IDIn))
+		q = q.Where(goqu.C(COLUMN_ID).In(options.IDIn))
 	}
 
 	if options.Status != "" {
-		q = q.Where(goqu.C("status").Eq(options.Status))
+		q = q.Where(goqu.C(COLUMN_STATUS).Eq(options.Status))
 	}
 
 	if len(options.StatusIn) > 0 {
-		q = q.Where(goqu.C("status").In(options.StatusIn))
+		q = q.Where(goqu.C(COLUMN_STATUS).In(options.StatusIn))
 	}
 
 	if options.CreatedAtGreaterThan != "" {
-		q = q.Where(goqu.C("created_at").Gt(options.CreatedAtGreaterThan))
+		q = q.Where(goqu.C(COLUMN_CREATED_AT).Gt(options.CreatedAtGreaterThan))
 	}
 
 	if options.CreatedAtLessThan != "" {
-		q = q.Where(goqu.C("created_at").Lt(options.CreatedAtLessThan))
+		q = q.Where(goqu.C(COLUMN_CREATED_AT).Lt(options.CreatedAtLessThan))
 	}
 
 	if len(options.StatusIn) > 0 {
-		q = q.Where(goqu.C("status").In(options.StatusIn))
+		q = q.Where(goqu.C(COLUMN_STATUS).In(options.StatusIn))
 	}
 
 	if !options.CountOnly {
@@ -352,7 +350,7 @@ func (store *Store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 
 	if !options.WithDeleted {
 		//q = q.Where(goqu.C("status").Neq(POST_STATUS_DELETED))
-		q = q.Where(goqu.C("deleted_at").Eq(sb.NULL_DATETIME))
+		q = q.Where(goqu.C(COLUMN_DELETED_AT).Eq(sb.NULL_DATETIME))
 	}
 
 	return q

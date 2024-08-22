@@ -9,81 +9,81 @@ func (st *Store) sqlCreateTable() string {
 	sql := sb.NewBuilder(sb.DatabaseDriverName(st.db)).
 		Table(st.postTableName).
 		Column(sb.Column{
-			Name:       "id",
+			Name:       COLUMN_ID,
 			Type:       sb.COLUMN_TYPE_STRING,
 			Length:     40,
 			PrimaryKey: true,
 		}).
 		Column(sb.Column{
-			Name:   "status",
+			Name:   COLUMN_STATUS,
 			Type:   sb.COLUMN_TYPE_STRING,
 			Length: 40,
 		}).
 		Column(sb.Column{
-			Name:   "title",
+			Name:   COLUMN_TITLE,
 			Type:   sb.COLUMN_TYPE_STRING,
 			Length: 255,
 		}).
 		Column(sb.Column{
-			Name: "content",
+			Name: COLUMN_CONTENT,
 			Type: sb.COLUMN_TYPE_TEXT,
 		}).
 		Column(sb.Column{
-			Name: "summary",
+			Name: COLUMN_SUMMARY,
 			Type: sb.COLUMN_TYPE_TEXT,
 		}).
 		Column(sb.Column{
-			Name: "image_url",
+			Name: COLUMN_IMAGE_URL,
 			Type: sb.COLUMN_TYPE_TEXT,
 		}).
 		Column(sb.Column{
-			Name:   "featured",
+			Name:   COLUMN_FEATURED,
 			Type:   sb.COLUMN_TYPE_STRING,
 			Length: 3,
 		}).
 		Column(sb.Column{
-			Name:   "author_id",
+			Name:   COLUMN_AUTHOR_ID,
 			Type:   sb.COLUMN_TYPE_STRING,
 			Length: 40,
 		}).
 		Column(sb.Column{
-			Name:   "canonical_url",
+			Name:   COLUMN_CANONICAL_URL,
 			Type:   sb.COLUMN_TYPE_STRING,
 			Length: 255,
 		}).
 		Column(sb.Column{
-			Name:   "meta_keywords",
+			Name:   COLUMN_META_KEYWORDS,
 			Type:   sb.COLUMN_TYPE_STRING,
 			Length: 255,
 		}).
 		Column(sb.Column{
-			Name:   "meta_description",
+			Name:   COLUMN_META_DESCRIPTION,
 			Type:   sb.COLUMN_TYPE_STRING,
 			Length: 255,
 		}).
 		Column(sb.Column{
-			Name:   "meta_robots",
+			Name:   COLUMN_META_ROBOTS,
 			Type:   sb.COLUMN_TYPE_STRING,
 			Length: 255,
 		}).
 		Column(sb.Column{
-			Name: "metas",
+			Name: COLUMN_METAS,
 			Type: sb.COLUMN_TYPE_TEXT,
 		}).
 		Column(sb.Column{
-			Name: "published_at",
+			Name: COLUMN_PUBLISHED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).
 		Column(sb.Column{
-			Name: "created_at",
+			Name: COLUMN_CREATED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).
 		Column(sb.Column{
-			Name: "updated_at",
+			Name: COLUMN_UPDATED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).
 		Column(sb.Column{
-			Name: "deleted_at",
+			Name: COLUMN_DELETED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).
 		CreateIfNotExists()
