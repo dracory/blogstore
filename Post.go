@@ -57,6 +57,22 @@ func (o *Post) Editor() string {
 	return o.Meta("editor")
 }
 
+func (o *Post) IsDraft() bool {
+	return o.Status() == POST_STATUS_DRAFT
+}
+
+func (o *Post) IsPublished() bool {
+	return o.Status() == POST_STATUS_PUBLISHED
+}
+
+func (o *Post) IsTrashed() bool {
+	return o.Status() == POST_STATUS_TRASH
+}
+
+func (o *Post) IsUnpublished() bool {
+	return !o.IsPublished()
+}
+
 // ============================ SETTERS AND GETTERS ============================
 
 func (o *Post) AddMetas(metas map[string]string) error {
@@ -133,18 +149,6 @@ func (o *Post) Featured() string {
 
 func (o *Post) ID() string {
 	return o.Get(COLUMN_ID)
-}
-
-func (o *Post) IsPublished() bool {
-	return o.Status() == POST_STATUS_PUBLISHED
-}
-
-func (o *Post) IsTrashed() bool {
-	return o.Status() == POST_STATUS_TRASH
-}
-
-func (o *Post) IsUnpublished() bool {
-	return !o.IsPublished()
 }
 
 func (o *Post) ImageUrl() string {
