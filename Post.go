@@ -58,6 +58,11 @@ func (o *Post) Editor() string {
 	return o.Meta("editor")
 }
 
+func (o *Post) SetEditor(editor string) *Post {
+	o.SetMeta("editor", editor)
+	return o
+}
+
 func (o *Post) IsDraft() bool {
 	return o.Status() == POST_STATUS_DRAFT
 }
@@ -198,6 +203,27 @@ func (o *Post) SetMemo(memo string) *Post {
 	return o
 }
 
+func (o *Post) Meta(key string) string {
+	metas, err := o.Metas()
+
+	if err != nil {
+		return ""
+	}
+
+	return lo.ValueOr(metas, key, "")
+}
+
+func (o *Post) SetMeta(key string, value string) error {
+	metas, err := o.Metas()
+
+	if err != nil {
+		return err
+	}
+
+	metas[key] = value
+	return o.SetMetas(metas)
+}
+
 func (o *Post) Metas() (map[string]string, error) {
 	metasStr := o.Get(COLUMN_METAS)
 
@@ -316,16 +342,6 @@ func (o *Post) UpdatedAtCarbon() carbon.Carbon {
 func (o *Post) SetUpdatedAt(updatedAt string) *Post {
 	o.Set(COLUMN_UPDATED_AT, updatedAt)
 	return o
-}
-
-func (o *Post) Meta(key string) string {
-	metas, err := o.Metas()
-
-	if err != nil {
-		return ""
-	}
-
-	return lo.ValueOr(metas, key, "")
 }
 
 func BlogNoImageUrl() string {
