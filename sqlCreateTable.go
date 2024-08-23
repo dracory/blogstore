@@ -71,6 +71,10 @@ func (st *Store) sqlCreateTable() string {
 			Type: sb.COLUMN_TYPE_TEXT,
 		}).
 		Column(sb.Column{
+			Name: COLUMN_MEMO,
+			Type: sb.COLUMN_TYPE_TEXT,
+		}).
+		Column(sb.Column{
 			Name: COLUMN_PUBLISHED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).

@@ -22,6 +22,7 @@ func NewPost() *Post {
 		SetContent("").
 		SetFeatured(NO).
 		SetImageUrl("").
+		SetMemo("").
 		SetMetaDescription("").
 		SetMetaKeywords("").
 		SetMetaRobots("").
@@ -102,8 +103,27 @@ func (o *Post) CanonicalURL() string {
 	return o.Get(COLUMN_CANONICAL_URL)
 }
 
+func (o *Post) SetCanonicalURL(canonicalURL string) *Post {
+	o.Set(COLUMN_CANONICAL_URL, canonicalURL)
+	return o
+}
+
+func (o *Post) Content() string {
+	return o.Get(COLUMN_CONTENT)
+}
+
+func (o *Post) SetContent(content string) *Post {
+	o.Set(COLUMN_CONTENT, content)
+	return o
+}
+
 func (o *Post) CreatedAt() string {
 	return o.Get(COLUMN_CREATED_AT)
+}
+
+func (o *Post) SetCreatedAt(createdAt string) *Post {
+	o.Set(COLUMN_CREATED_AT, createdAt)
+	return o
 }
 
 func (o *Post) CreatedAtCarbon() carbon.Carbon {
@@ -139,100 +159,8 @@ func (o *Post) SetDeletedAt(deletedAt string) *Post {
 	return o
 }
 
-func (o *Post) Content() string {
-	return o.Get(COLUMN_CONTENT)
-}
-
 func (o *Post) Featured() string {
 	return o.Get(COLUMN_FEATURED)
-}
-
-func (o *Post) ID() string {
-	return o.Get(COLUMN_ID)
-}
-
-func (o *Post) ImageUrl() string {
-	return o.Get(COLUMN_IMAGE_URL)
-}
-
-func (o *Post) ImageUrlOrDefault() string {
-	return lo.Ternary(o.ImageUrl() == "", BlogNoImageUrl(), o.ImageUrl())
-}
-
-func (o *Post) MetaDescription() string {
-	return o.Get(COLUMN_META_DESCRIPTION)
-}
-
-func (o *Post) MetaKeywords() string {
-	return o.Get(COLUMN_META_KEYWORDS)
-}
-
-func (o *Post) MetaRobots() string {
-	return o.Get(COLUMN_META_ROBOTS)
-}
-
-func (o *Post) PublishedAt() string {
-	return o.Get(COLUMN_PUBLISHED_AT)
-}
-
-func (o *Post) PublishedAtCarbon() carbon.Carbon {
-	createdAt := o.PublishedAt()
-	if createdAt == "" {
-		return carbon.Parse(sb.NULL_DATETIME)
-	}
-	return carbon.Parse(createdAt)
-}
-
-func (o *Post) PublishedAtTime() time.Time {
-	publishedAt := o.PublishedAt()
-	if publishedAt == "" {
-		return time.Time{}
-	}
-	return carbon.Parse(publishedAt).StdTime()
-}
-
-func (o *Post) Status() string {
-	return o.Get(COLUMN_STATUS)
-}
-
-func (o *Post) Summary() string {
-	return o.Get(COLUMN_SUMMARY)
-}
-
-func (o *Post) Title() string {
-	return o.Get(COLUMN_TITLE)
-}
-
-func (o *Post) UpdatedAt() string {
-	return o.Get(COLUMN_UPDATED_AT)
-}
-
-func (o *Post) UpdatedAtCarbon() carbon.Carbon {
-	updatedAt := o.UpdatedAt()
-	if updatedAt == "" {
-		return carbon.Parse(sb.NULL_DATETIME)
-	}
-	return carbon.Parse(updatedAt)
-}
-
-func (o *Post) SetUpdatedAt(updatedAt string) *Post {
-	o.Set(COLUMN_UPDATED_AT, updatedAt)
-	return o
-}
-
-func (o *Post) SetCanonicalURL(canonicalURL string) *Post {
-	o.Set(COLUMN_CANONICAL_URL, canonicalURL)
-	return o
-}
-
-func (o *Post) SetCreatedAt(createdAt string) *Post {
-	o.Set(COLUMN_CREATED_AT, createdAt)
-	return o
-}
-
-func (o *Post) SetContent(content string) *Post {
-	o.Set(COLUMN_CONTENT, content)
-	return o
 }
 
 func (o *Post) SetFeatured(featured string) *Post {
@@ -240,9 +168,16 @@ func (o *Post) SetFeatured(featured string) *Post {
 	return o
 }
 
+func (o *Post) ID() string {
+	return o.Get(COLUMN_ID)
+}
 func (o *Post) SetID(id string) *Post {
 	o.Set(COLUMN_ID, id)
 	return o
+}
+
+func (o *Post) ImageUrl() string {
+	return o.Get(COLUMN_IMAGE_URL)
 }
 
 func (o *Post) SetImageUrl(imageURL string) *Post {
@@ -250,29 +185,17 @@ func (o *Post) SetImageUrl(imageURL string) *Post {
 	return o
 }
 
-func (o *Post) SetMetaDescription(metaDescription string) *Post {
-	o.Set(COLUMN_META_DESCRIPTION, metaDescription)
-	return o
+func (o *Post) ImageUrlOrDefault() string {
+	return lo.Ternary(o.ImageUrl() == "", BlogNoImageUrl(), o.ImageUrl())
 }
 
-func (o *Post) SetMetaKeywords(metaKeywords string) *Post {
-	o.Set(COLUMN_META_KEYWORDS, metaKeywords)
-	return o
+func (o *Post) Memo() string {
+	return o.Get(COLUMN_MEMO)
 }
 
-func (o *Post) SetMetaRobots(metaRobots string) *Post {
-	o.Set(COLUMN_META_ROBOTS, metaRobots)
+func (o *Post) SetMemo(memo string) *Post {
+	o.Set(COLUMN_MEMO, memo)
 	return o
-}
-
-func (o *Post) Meta(key string) string {
-	metas, err := o.Metas()
-
-	if err != nil {
-		return ""
-	}
-
-	return lo.ValueOr(metas, key, "")
 }
 
 func (o *Post) Metas() (map[string]string, error) {
@@ -299,9 +222,60 @@ func (o *Post) SetMetas(metas map[string]string) error {
 	return nil
 }
 
+func (o *Post) MetaDescription() string {
+	return o.Get(COLUMN_META_DESCRIPTION)
+}
+
+func (o *Post) SetMetaDescription(metaDescription string) *Post {
+	o.Set(COLUMN_META_DESCRIPTION, metaDescription)
+	return o
+}
+
+func (o *Post) MetaKeywords() string {
+	return o.Get(COLUMN_META_KEYWORDS)
+}
+
+func (o *Post) SetMetaKeywords(metaKeywords string) *Post {
+	o.Set(COLUMN_META_KEYWORDS, metaKeywords)
+	return o
+}
+
+func (o *Post) MetaRobots() string {
+	return o.Get(COLUMN_META_ROBOTS)
+}
+
+func (o *Post) SetMetaRobots(metaRobots string) *Post {
+	o.Set(COLUMN_META_ROBOTS, metaRobots)
+	return o
+}
+
+func (o *Post) PublishedAt() string {
+	return o.Get(COLUMN_PUBLISHED_AT)
+}
+
 func (o *Post) SetPublishedAt(status string) *Post {
 	o.Set(COLUMN_PUBLISHED_AT, status)
 	return o
+}
+
+func (o *Post) PublishedAtCarbon() carbon.Carbon {
+	createdAt := o.PublishedAt()
+	if createdAt == "" {
+		return carbon.Parse(sb.NULL_DATETIME)
+	}
+	return carbon.Parse(createdAt)
+}
+
+func (o *Post) PublishedAtTime() time.Time {
+	publishedAt := o.PublishedAt()
+	if publishedAt == "" {
+		return time.Time{}
+	}
+	return carbon.Parse(publishedAt).StdTime()
+}
+
+func (o *Post) Status() string {
+	return o.Get(COLUMN_STATUS)
 }
 
 func (o *Post) SetStatus(status string) *Post {
@@ -309,14 +283,49 @@ func (o *Post) SetStatus(status string) *Post {
 	return o
 }
 
+func (o *Post) Summary() string {
+	return o.Get(COLUMN_SUMMARY)
+}
+
 func (o *Post) SetSummary(summary string) *Post {
 	o.Set(COLUMN_SUMMARY, summary)
 	return o
 }
 
+func (o *Post) Title() string {
+	return o.Get(COLUMN_TITLE)
+}
+
 func (o *Post) SetTitle(title string) *Post {
 	o.Set(COLUMN_TITLE, title)
 	return o
+}
+
+func (o *Post) UpdatedAt() string {
+	return o.Get(COLUMN_UPDATED_AT)
+}
+
+func (o *Post) UpdatedAtCarbon() carbon.Carbon {
+	updatedAt := o.UpdatedAt()
+	if updatedAt == "" {
+		return carbon.Parse(sb.NULL_DATETIME)
+	}
+	return carbon.Parse(updatedAt)
+}
+
+func (o *Post) SetUpdatedAt(updatedAt string) *Post {
+	o.Set(COLUMN_UPDATED_AT, updatedAt)
+	return o
+}
+
+func (o *Post) Meta(key string) string {
+	metas, err := o.Metas()
+
+	if err != nil {
+		return ""
+	}
+
+	return lo.ValueOr(metas, key, "")
 }
 
 func BlogNoImageUrl() string {
