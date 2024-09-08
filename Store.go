@@ -38,8 +38,9 @@ func (store *Store) AutoMigrate() error {
 }
 
 // EnableDebug - enables the debug option
-func (st *Store) EnableDebug(debug bool) {
+func (st *Store) EnableDebug(debug bool) *Store {
 	st.debugEnabled = debug
+	return st
 }
 
 func (store *Store) PostCreate(post *Post) error {
@@ -48,7 +49,7 @@ func (store *Store) PostCreate(post *Post) error {
 
 	data := post.Data()
 
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
+	sqlStr, sqlParams, errSql := goqu.Dialect(store.dbDriverName).
 		Insert(store.postTableName).
 		Prepared(true).
 		Rows(data).
@@ -62,7 +63,7 @@ func (store *Store) PostCreate(post *Post) error {
 		log.Println(sqlStr)
 	}
 
-	_, err := store.db.Exec(sqlStr, params...)
+	_, err := store.db.Exec(sqlStr, sqlParams...)
 
 	if err != nil {
 		return err
@@ -133,8 +134,8 @@ func (store *Store) PostDeleteByID(id string) error {
 
 	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
 		Delete(store.postTableName).
-		Prepared(true).
 		Where(goqu.C(COLUMN_ID).Eq(id)).
+		Prepared(true).
 		ToSQL()
 
 	if errSql != nil {
@@ -208,10 +209,13 @@ func (store *Store) PostFindNext(post Post) (*Post, error) {
 func (store *Store) PostList(options PostQueryOptions) ([]Post, error) {
 	q := store.postQuery(options)
 
-	sqlStr, _, errSql := q.Select().ToSQL()
+	sqlStr, sqlParams, errSql := q.Select().
+		Prepared(true).
+		ToSQL()
 
 	if errSql != nil {
-		return []Post{}, nil
+		log.Println(errSql)
+		return []Post{}, errSql
 	}
 
 	if store.debugEnabled {
@@ -219,7 +223,7 @@ func (store *Store) PostList(options PostQueryOptions) ([]Post, error) {
 	}
 
 	db := sb.NewDatabase(store.db, store.dbDriverName)
-	modelMaps, err := db.SelectToMapString(sqlStr)
+	modelMaps, err := db.SelectToMapString(sqlStr, sqlParams...)
 	if err != nil {
 		return []Post{}, err
 	}
@@ -263,9 +267,9 @@ func (store *Store) PostUpdate(post *Post) error {
 
 	dataChanged := post.DataChanged()
 
-	delete(dataChanged, "id")   // ID is not updateable
-	delete(dataChanged, "hash") // Hash is not updateable
-	delete(dataChanged, "data") // Data is not updateable
+	delete(dataChanged, "id")   // ID is not updatable
+	delete(dataChanged, "hash") // Hash is not updatable
+	delete(dataChanged, "data") // Data is not updatable
 
 	if len(dataChanged) < 1 {
 		return nil
@@ -273,9 +277,9 @@ func (store *Store) PostUpdate(post *Post) error {
 
 	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
 		Update(store.postTableName).
-		Prepared(true).
 		Set(dataChanged).
 		Where(goqu.C(COLUMN_ID).Eq(post.ID())).
+		Prepared(true).
 		ToSQL()
 
 	if errSql != nil {
@@ -311,6 +315,16 @@ func (store *Store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 
 	if len(options.StatusIn) > 0 {
 		q = q.Where(goqu.C(COLUMN_STATUS).In(options.StatusIn))
+	}
+
+	if options.Search != "" {
+		q = q.Where(
+			goqu.Or(
+				goqu.C(COLUMN_TITLE).Like("%"+options.Search+"%"),
+				goqu.C(COLUMN_CONTENT).Like("%"+options.Search+"%"),
+				goqu.C(COLUMN_ID).Like(options.Search),
+			),
+		)
 	}
 
 	if options.CreatedAtGreaterThan != "" {

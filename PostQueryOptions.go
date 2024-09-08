@@ -5,6 +5,7 @@ type PostQueryOptions struct {
 	IDIn                 []string
 	Status               string
 	StatusIn             []string
+	Search               string
 	CreatedAtLessThan    string
 	CreatedAtGreaterThan string
 	Offset               int
