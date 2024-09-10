@@ -320,9 +320,12 @@ func (store *Store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 	if options.Search != "" {
 		q = q.Where(
 			goqu.Or(
-				goqu.C(COLUMN_TITLE).Like("%"+options.Search+"%"),
-				goqu.C(COLUMN_CONTENT).Like("%"+options.Search+"%"),
-				goqu.C(COLUMN_ID).Like(options.Search),
+				// Search Title
+				goqu.C(COLUMN_TITLE).ILike("%"+options.Search+"%"),
+				// Search Body Content
+				goqu.C(COLUMN_CONTENT).ILike("%"+options.Search+"%"),
+				// Search ID
+				goqu.C(COLUMN_ID).Eq(options.Search),
 			),
 		)
 	}
