@@ -9,6 +9,7 @@ const POST_STATUS_UNPUBLISHED = "unpublished"
 const POST_STATUS_TRASH = "trash"
 
 const POST_EDITOR_BLOCKAREA = "BlockArea"
+const POST_EDITOR_BLOCKEDITOR = "BlockEditor"
 const POST_EDITOR_MARKDOWN = "Markdown"
 const POST_EDITOR_HTMLAREA = "HtmlArea"
 const POST_EDITOR_TEXTAREA = "TextArea"
