@@ -30,9 +30,9 @@ func NewPost() *Post {
 		SetPublishedAt(sb.NULL_DATETIME).
 		SetSummary("").
 		SetTitle("").
-		SetPublishedAt(carbon.NewCarbon().Now().Format("Y-m-d H:i:s")).
-		SetCreatedAt(carbon.NewCarbon().Now().Format("Y-m-d H:i:s")).
-		SetUpdatedAt(carbon.NewCarbon().Now().Format("Y-m-d H:i:s")).
+		SetPublishedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
+		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
+		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetDeletedAt(sb.MAX_DATETIME).
 		SetMetas(map[string]string{})
 
