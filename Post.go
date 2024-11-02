@@ -33,7 +33,7 @@ func NewPost() *Post {
 		SetPublishedAt(carbon.NewCarbon().Now().Format("Y-m-d H:i:s")).
 		SetCreatedAt(carbon.NewCarbon().Now().Format("Y-m-d H:i:s")).
 		SetUpdatedAt(carbon.NewCarbon().Now().Format("Y-m-d H:i:s")).
-		SetDeletedAt(sb.NULL_DATETIME).
+		SetDeletedAt(sb.MAX_DATETIME).
 		SetMetas(map[string]string{})
 
 	return o

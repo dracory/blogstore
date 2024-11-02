@@ -365,10 +365,12 @@ func (store *Store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 		}
 	}
 
-	if !options.WithDeleted {
-		//q = q.Where(goqu.C("status").Neq(POST_STATUS_DELETED))
-		q = q.Where(goqu.C(COLUMN_DELETED_AT).Eq(sb.NULL_DATETIME))
+	if options.WithDeleted {
+		return q
 	}
 
-	return q
+	softDeleted := goqu.C(COLUMN_DELETED_AT).
+		Gt(carbon.Now(carbon.UTC).ToDateTimeString())
+
+	return q.Where(softDeleted)
 }
