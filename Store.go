@@ -13,9 +13,9 @@ import (
 	"github.com/samber/lo"
 )
 
-var _ StoreInterface = (*Store)(nil) // verify it extends the interface
+var _ StoreInterface = (*store)(nil) // verify it extends the interface
 
-type Store struct {
+type store struct {
 	postTableName      string
 	db                 *sql.DB
 	dbDriverName       string
@@ -25,7 +25,7 @@ type Store struct {
 }
 
 // AutoMigrate auto migrate
-func (store *Store) AutoMigrate() error {
+func (store *store) AutoMigrate() error {
 	sql := store.sqlCreateTable()
 
 	_, err := store.db.Exec(sql)
@@ -38,12 +38,12 @@ func (store *Store) AutoMigrate() error {
 }
 
 // EnableDebug - enables the debug option
-func (st *Store) EnableDebug(debug bool) *Store {
+func (st *store) EnableDebug(debug bool) StoreInterface {
 	st.debugEnabled = debug
 	return st
 }
 
-func (store *Store) PostCreate(post *Post) error {
+func (store *store) PostCreate(post *Post) error {
 	post.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 	post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
@@ -74,7 +74,7 @@ func (store *Store) PostCreate(post *Post) error {
 	return nil
 }
 
-func (store *Store) PostCount(options PostQueryOptions) (int64, error) {
+func (store *store) PostCount(options PostQueryOptions) (int64, error) {
 	options.CountOnly = true
 	q := store.postQuery(options)
 
@@ -113,13 +113,13 @@ func (store *Store) PostCount(options PostQueryOptions) (int64, error) {
 	return i, nil
 }
 
-func (store *Store) PostTrash(post *Post) error {
+func (store *store) PostTrash(post *Post) error {
 	post.SetStatus(POST_STATUS_TRASH)
 
 	return store.PostUpdate(post)
 }
 
-func (store *Store) PostDelete(post *Post) error {
+func (store *store) PostDelete(post *Post) error {
 	if post == nil {
 		return errors.New("post is nil")
 	}
@@ -127,7 +127,7 @@ func (store *Store) PostDelete(post *Post) error {
 	return store.PostDeleteByID(post.ID())
 }
 
-func (store *Store) PostDeleteByID(id string) error {
+func (store *store) PostDeleteByID(id string) error {
 	if id == "" {
 		return errors.New("post id is empty")
 	}
@@ -151,7 +151,7 @@ func (store *Store) PostDeleteByID(id string) error {
 	return err
 }
 
-func (store *Store) PostFindByID(id string) (*Post, error) {
+func (store *store) PostFindByID(id string) (*Post, error) {
 	if id == "" {
 		return nil, errors.New("post id is empty")
 	}
@@ -172,8 +172,8 @@ func (store *Store) PostFindByID(id string) (*Post, error) {
 	return nil, nil
 }
 
-func (store *Store) PostFindPrevious(post Post) (*Post, error) {
-	list, err := store.PostList(PostQueryOptions{
+func (st *store) PostFindPrevious(post Post) (*Post, error) {
+	list, err := st.PostList(PostQueryOptions{
 		CreatedAtLessThan: post.CreatedAtCarbon().ToDateTimeString(),
 		Limit:             1,
 	})
@@ -189,8 +189,8 @@ func (store *Store) PostFindPrevious(post Post) (*Post, error) {
 	return nil, nil
 }
 
-func (store *Store) PostFindNext(post Post) (*Post, error) {
-	list, err := store.PostList(PostQueryOptions{
+func (st *store) PostFindNext(post Post) (*Post, error) {
+	list, err := st.PostList(PostQueryOptions{
 		CreatedAtGreaterThan: post.CreatedAtCarbon().ToDateTimeString(),
 		Limit:                1,
 	})
@@ -206,8 +206,8 @@ func (store *Store) PostFindNext(post Post) (*Post, error) {
 	return nil, nil
 }
 
-func (store *Store) PostList(options PostQueryOptions) ([]Post, error) {
-	q := store.postQuery(options)
+func (st *store) PostList(options PostQueryOptions) ([]Post, error) {
+	q := st.postQuery(options)
 
 	sqlStr, sqlParams, errSql := q.Select().
 		Prepared(true).
@@ -218,11 +218,11 @@ func (store *Store) PostList(options PostQueryOptions) ([]Post, error) {
 		return []Post{}, errSql
 	}
 
-	if store.debugEnabled {
+	if st.debugEnabled {
 		log.Println(sqlStr)
 	}
 
-	db := sb.NewDatabase(store.db, store.dbDriverName)
+	db := sb.NewDatabase(st.db, st.dbDriverName)
 	modelMaps, err := db.SelectToMapString(sqlStr, sqlParams...)
 	if err != nil {
 		return []Post{}, err
@@ -238,27 +238,27 @@ func (store *Store) PostList(options PostQueryOptions) ([]Post, error) {
 	return list, nil
 }
 
-func (store *Store) PostSoftDelete(post *Post) error {
+func (st *store) PostSoftDelete(post *Post) error {
 	if post == nil {
 		return errors.New("post is nil")
 	}
 
 	post.SetDeletedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
-	return store.PostUpdate(post)
+	return st.PostUpdate(post)
 }
 
-func (store *Store) PostSoftDeleteByID(id string) error {
-	post, err := store.PostFindByID(id)
+func (st *store) PostSoftDeleteByID(id string) error {
+	post, err := st.PostFindByID(id)
 
 	if err != nil {
 		return err
 	}
 
-	return store.PostSoftDelete(post)
+	return st.PostSoftDelete(post)
 }
 
-func (store *Store) PostUpdate(post *Post) error {
+func (st *store) PostUpdate(post *Post) error {
 	if post == nil {
 		return errors.New("order is nil")
 	}
@@ -275,8 +275,8 @@ func (store *Store) PostUpdate(post *Post) error {
 		return nil
 	}
 
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Update(store.postTableName).
+	sqlStr, params, errSql := goqu.Dialect(st.dbDriverName).
+		Update(st.postTableName).
 		Set(dataChanged).
 		Where(goqu.C(COLUMN_ID).Eq(post.ID())).
 		Prepared(true).
@@ -286,20 +286,20 @@ func (store *Store) PostUpdate(post *Post) error {
 		return errSql
 	}
 
-	if store.debugEnabled {
+	if st.debugEnabled {
 		log.Println(sqlStr)
 	}
 
-	_, err := store.db.Exec(sqlStr, params...)
+	_, err := st.db.Exec(sqlStr, params...)
 
 	post.MarkAsNotDirty()
 
 	return err
 }
 
-func (store *Store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
-	q := goqu.Dialect(store.dbDriverName).
-		From(store.postTableName)
+func (st *store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
+	q := goqu.Dialect(st.dbDriverName).
+		From(st.postTableName)
 
 	if options.ID != "" {
 		q = q.Where(goqu.C(COLUMN_ID).Eq(options.ID))

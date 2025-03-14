@@ -1,6 +1,10 @@
 package blogstore
 
 type StoreInterface interface {
+	AutoMigrate() error
+	EnableDebug(debug bool) StoreInterface
+
+	PostCount(options PostQueryOptions) (int64, error)
 	PostCreate(post *Post) error
 	PostDelete(post *Post) error
 	PostDeleteByID(postID string) error

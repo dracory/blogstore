@@ -18,7 +18,7 @@ type NewStoreOptions struct {
 }
 
 // NewStore creates a new block store
-func NewStore(opts NewStoreOptions) (*Store, error) {
+func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 	if opts.PostTableName == "" {
 		return nil, errors.New("blog store: PostTableName is required")
 	}
@@ -31,7 +31,7 @@ func NewStore(opts NewStoreOptions) (*Store, error) {
 		opts.DbDriverName = sb.DatabaseDriverName(opts.DB)
 	}
 
-	store := &Store{
+	store := &store{
 		postTableName:      opts.PostTableName,
 		automigrateEnabled: opts.AutomigrateEnabled,
 		db:                 opts.DB,

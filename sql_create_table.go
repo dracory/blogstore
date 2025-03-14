@@ -5,7 +5,7 @@ import (
 )
 
 // SQLCreateTable returns a SQL string for creating the cache table
-func (st *Store) sqlCreateTable() string {
+func (st *store) sqlCreateTable() string {
 	sql := sb.NewBuilder(sb.DatabaseDriverName(st.db)).
 		Table(st.postTableName).
 		Column(sb.Column{
