@@ -131,7 +131,7 @@ func (o *Post) SetCreatedAt(createdAt string) *Post {
 	return o
 }
 
-func (o *Post) CreatedAtCarbon() carbon.Carbon {
+func (o *Post) CreatedAtCarbon() *carbon.Carbon {
 	createdAt := o.CreatedAt()
 	if createdAt == "" {
 		return carbon.Parse(sb.NULL_DATETIME)
@@ -151,7 +151,7 @@ func (o *Post) DeletedAt() string {
 	return o.Get(COLUMN_DELETED_AT)
 }
 
-func (o *Post) DeletedAtCarbon() carbon.Carbon {
+func (o *Post) DeletedAtCarbon() *carbon.Carbon {
 	deletedAt := o.DeletedAt()
 	if deletedAt == "" {
 		return carbon.Parse(sb.NULL_DATETIME)
@@ -284,7 +284,7 @@ func (o *Post) SetPublishedAt(status string) *Post {
 	return o
 }
 
-func (o *Post) PublishedAtCarbon() carbon.Carbon {
+func (o *Post) PublishedAtCarbon() *carbon.Carbon {
 	createdAt := o.PublishedAt()
 	if createdAt == "" {
 		return carbon.Parse(sb.NULL_DATETIME)
@@ -331,7 +331,7 @@ func (o *Post) UpdatedAt() string {
 	return o.Get(COLUMN_UPDATED_AT)
 }
 
-func (o *Post) UpdatedAtCarbon() carbon.Carbon {
+func (o *Post) UpdatedAtCarbon() *carbon.Carbon {
 	updatedAt := o.UpdatedAt()
 	if updatedAt == "" {
 		return carbon.Parse(sb.NULL_DATETIME)
