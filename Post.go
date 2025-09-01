@@ -1,14 +1,14 @@
 package blogstore
 
 import (
+	"encoding/json"
 	"time"
 
+	"github.com/dracory/dataobject"
+	"github.com/dracory/sb"
+	"github.com/dracory/str"
+	"github.com/dracory/uid"
 	"github.com/dromara/carbon/v2"
-	"github.com/gouniverse/dataobject"
-	"github.com/gouniverse/maputils"
-	"github.com/gouniverse/sb"
-	"github.com/gouniverse/uid"
-	"github.com/gouniverse/utils"
 	"github.com/samber/lo"
 )
 
@@ -51,7 +51,7 @@ type Post struct {
 
 // ================================== METHODS ==================================
 func (o *Post) Slug() string {
-	return utils.StrSlugify(o.Title(), '-')
+	return str.Slugify(o.Title(), '-')
 }
 
 func (o *Post) Editor() string {
@@ -231,20 +231,21 @@ func (o *Post) Metas() (map[string]string, error) {
 		metasStr = "{}"
 	}
 
-	metasJson, errJson := utils.FromJSON(metasStr, map[string]string{})
+	metasJson := map[string]string{}
+	errJson := json.Unmarshal([]byte(metasStr), &metasJson)
 	if errJson != nil {
 		return map[string]string{}, errJson
 	}
 
-	return maputils.MapStringAnyToMapStringString(metasJson.(map[string]any)), nil
+	return metasJson, nil
 }
 
 func (o *Post) SetMetas(metas map[string]string) error {
-	mapString, err := utils.ToJSON(metas)
+	mapString, err := json.Marshal(metas)
 	if err != nil {
 		return err
 	}
-	o.Set(COLUMN_METAS, mapString)
+	o.Set(COLUMN_METAS, string(mapString))
 	return nil
 }
 

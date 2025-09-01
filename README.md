@@ -1,10 +1,10 @@
 # Blog Store
 
-<a href="https://gitpod.io/#https://github.com/gouniverse/blogstore" style="float:right:"><img src="https://gitpod.io/button/open-in-gitpod.svg" alt="Open in Gitpod" loading="lazy"></a>
+<a href="https://gitpod.io/#https://github.com/dracory/blogstore" style="float:right:"><img src="https://gitpod.io/button/open-in-gitpod.svg" alt="Open in Gitpod" loading="lazy"></a>
 
-[![Tests Status](https://github.com/gouniverse/blogstore/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/gouniverse/blogstore/actions/workflows/tests.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gouniverse/blogstore)](https://goreportcard.com/report/github.com/gouniverse/blogstore)
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/gouniverse/blogstore)](https://pkg.go.dev/github.com/gouniverse/blogstore)
+[![Tests Status](https://github.com/dracory/blogstore/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/dracory/blogstore/actions/workflows/tests.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dracory/blogstore)](https://goreportcard.com/report/github.com/dracory/blogstore)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/dracory/blogstore)](https://pkg.go.dev/github.com/dracory/blogstore)
 
 Stores blog posts to a database table.
 
@@ -16,7 +16,7 @@ For commercial use, please use my [contact page](https://lesichkov.co.uk/contact
 
 ## Installation
 ```
-go get -u github.com/gouniverse/blogstore
+go get -u github.com/dracory/blogstore
 ```
 
 ## Setup
@@ -28,4 +28,3 @@ blogStore = blogstore.NewStore(blog.NewStoreOptions{
 	AutomigrateEnabled: true,
 	DebugEnabled:       false,
 })
-```
