@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/doug-martin/goqu/v9 v9.19.0
+	github.com/dracory/database v0.5.0
 	github.com/dracory/dataobject v1.6.0
 	github.com/dracory/sb v0.15.0
 	github.com/dracory/str v0.17.0
@@ -14,7 +15,6 @@ require (
 )
 
 require (
-	github.com/dracory/database v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/georgysavva/scany v1.2.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
