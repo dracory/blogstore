@@ -33,7 +33,7 @@ func NewPost() *Post {
 		SetPublishedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
-		SetDeletedAt(sb.MAX_DATETIME).
+		SetSoftDeletedAt(sb.MAX_DATETIME).
 		SetMetas(map[string]string{})
 
 	return o
@@ -147,20 +147,20 @@ func (o *Post) CreatedAtTime() time.Time {
 	return carbon.Parse(createdAt).StdTime()
 }
 
-func (o *Post) DeletedAt() string {
-	return o.Get(COLUMN_DELETED_AT)
+func (o *Post) SoftDeletedAt() string {
+	return o.Get(COLUMN_SOFT_DELETED_AT)
 }
 
-func (o *Post) DeletedAtCarbon() *carbon.Carbon {
-	deletedAt := o.DeletedAt()
+func (o *Post) SoftDeletedAtCarbon() *carbon.Carbon {
+	deletedAt := o.SoftDeletedAt()
 	if deletedAt == "" {
 		return carbon.Parse(sb.NULL_DATETIME)
 	}
 	return carbon.Parse(deletedAt)
 }
 
-func (o *Post) SetDeletedAt(deletedAt string) *Post {
-	o.Set(COLUMN_DELETED_AT, deletedAt)
+func (o *Post) SetSoftDeletedAt(deletedAt string) *Post {
+	o.Set(COLUMN_SOFT_DELETED_AT, deletedAt)
 	return o
 }
 

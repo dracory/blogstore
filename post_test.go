@@ -34,8 +34,8 @@ func TestNewPostDefaults(t *testing.T) {
 		t.Errorf("NewPost() UpdatedAt must not be empty")
 	}
 
-	if got := p.DeletedAt(); got != sb.MAX_DATETIME {
-		t.Errorf("NewPost() DeletedAt = %q, want %q", got, sb.MAX_DATETIME)
+	if got := p.SoftDeletedAt(); got != sb.MAX_DATETIME {
+		t.Errorf("NewPost() SoftDeletedAt = %q, want %q", got, sb.MAX_DATETIME)
 	}
 
 	if got := p.Featured(); got != NO {

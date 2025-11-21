@@ -252,7 +252,7 @@ func (st *store) PostSoftDelete(ctx context.Context, post *Post) error {
 		return errors.New("post is nil")
 	}
 
-	post.SetDeletedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	post.SetSoftDeletedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
 	return st.PostUpdate(ctx, post)
 }
@@ -378,7 +378,7 @@ func (st *store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 		return q
 	}
 
-	softDeleted := goqu.C(COLUMN_DELETED_AT).
+	softDeleted := goqu.C(COLUMN_SOFT_DELETED_AT).
 		Gt(carbon.Now(carbon.UTC).ToDateTimeString())
 
 	return q.Where(softDeleted)
