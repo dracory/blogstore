@@ -1,6 +1,7 @@
 package blogstore
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/doug-martin/goqu/v9"
+	"github.com/dracory/database"
 	"github.com/dracory/sb"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
@@ -43,7 +45,7 @@ func (st *store) EnableDebug(debug bool) StoreInterface {
 	return st
 }
 
-func (store *store) PostCreate(post *Post) error {
+func (store *store) PostCreate(ctx context.Context, post *Post) error {
 	post.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 	post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
@@ -63,7 +65,7 @@ func (store *store) PostCreate(post *Post) error {
 		log.Println(sqlStr)
 	}
 
-	_, err := store.db.Exec(sqlStr, sqlParams...)
+	_, err := store.db.ExecContext(ctx, sqlStr, sqlParams...)
 
 	if err != nil {
 		return err
@@ -74,7 +76,7 @@ func (store *store) PostCreate(post *Post) error {
 	return nil
 }
 
-func (store *store) PostCount(options PostQueryOptions) (int64, error) {
+func (store *store) PostCount(ctx context.Context, options PostQueryOptions) (int64, error) {
 	options.CountOnly = true
 	q := store.postQuery(options)
 
@@ -91,8 +93,12 @@ func (store *store) PostCount(options PostQueryOptions) (int64, error) {
 		log.Println(sqlStr)
 	}
 
-	db := sb.NewDatabase(store.db, store.dbDriverName)
-	mapped, err := db.SelectToMapString(sqlStr, params...)
+	mapped, err := database.SelectToMapString(
+		database.NewQueryableContext(ctx, store.db),
+		sqlStr,
+		params...,
+	)
+
 	if err != nil {
 		return -1, err
 	}
@@ -113,21 +119,21 @@ func (store *store) PostCount(options PostQueryOptions) (int64, error) {
 	return i, nil
 }
 
-func (store *store) PostTrash(post *Post) error {
+func (store *store) PostTrash(ctx context.Context, post *Post) error {
 	post.SetStatus(POST_STATUS_TRASH)
 
-	return store.PostUpdate(post)
+	return store.PostUpdate(ctx, post)
 }
 
-func (store *store) PostDelete(post *Post) error {
+func (store *store) PostDelete(ctx context.Context, post *Post) error {
 	if post == nil {
 		return errors.New("post is nil")
 	}
 
-	return store.PostDeleteByID(post.ID())
+	return store.PostDeleteByID(ctx, post.ID())
 }
 
-func (store *store) PostDeleteByID(id string) error {
+func (store *store) PostDeleteByID(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.New("post id is empty")
 	}
@@ -146,17 +152,17 @@ func (store *store) PostDeleteByID(id string) error {
 		log.Println(sqlStr)
 	}
 
-	_, err := store.db.Exec(sqlStr, params...)
+	_, err := store.db.ExecContext(ctx, sqlStr, params...)
 
 	return err
 }
 
-func (store *store) PostFindByID(id string) (*Post, error) {
+func (store *store) PostFindByID(ctx context.Context, id string) (*Post, error) {
 	if id == "" {
 		return nil, errors.New("post id is empty")
 	}
 
-	list, err := store.PostList(PostQueryOptions{
+	list, err := store.PostList(ctx, PostQueryOptions{
 		ID:    id,
 		Limit: 1,
 	})
@@ -173,7 +179,7 @@ func (store *store) PostFindByID(id string) (*Post, error) {
 }
 
 func (st *store) PostFindPrevious(post Post) (*Post, error) {
-	list, err := st.PostList(PostQueryOptions{
+	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtLessThan: post.CreatedAtCarbon().ToDateTimeString(),
 		Limit:             1,
 	})
@@ -190,7 +196,7 @@ func (st *store) PostFindPrevious(post Post) (*Post, error) {
 }
 
 func (st *store) PostFindNext(post Post) (*Post, error) {
-	list, err := st.PostList(PostQueryOptions{
+	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtGreaterThan: post.CreatedAtCarbon().ToDateTimeString(),
 		Limit:                1,
 	})
@@ -206,7 +212,7 @@ func (st *store) PostFindNext(post Post) (*Post, error) {
 	return nil, nil
 }
 
-func (st *store) PostList(options PostQueryOptions) ([]Post, error) {
+func (st *store) PostList(ctx context.Context, options PostQueryOptions) ([]Post, error) {
 	q := st.postQuery(options)
 
 	sqlStr, sqlParams, errSql := q.Select().
@@ -222,8 +228,11 @@ func (st *store) PostList(options PostQueryOptions) ([]Post, error) {
 		log.Println(sqlStr)
 	}
 
-	db := sb.NewDatabase(st.db, st.dbDriverName)
-	modelMaps, err := db.SelectToMapString(sqlStr, sqlParams...)
+	modelMaps, err := database.SelectToMapString(
+		database.NewQueryableContext(ctx, st.db),
+		sqlStr,
+		sqlParams...,
+	)
 	if err != nil {
 		return []Post{}, err
 	}
@@ -238,27 +247,27 @@ func (st *store) PostList(options PostQueryOptions) ([]Post, error) {
 	return list, nil
 }
 
-func (st *store) PostSoftDelete(post *Post) error {
+func (st *store) PostSoftDelete(ctx context.Context, post *Post) error {
 	if post == nil {
 		return errors.New("post is nil")
 	}
 
 	post.SetDeletedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
-	return st.PostUpdate(post)
+	return st.PostUpdate(ctx, post)
 }
 
-func (st *store) PostSoftDeleteByID(id string) error {
-	post, err := st.PostFindByID(id)
+func (st *store) PostSoftDeleteByID(ctx context.Context, id string) error {
+	post, err := st.PostFindByID(ctx, id)
 
 	if err != nil {
 		return err
 	}
 
-	return st.PostSoftDelete(post)
+	return st.PostSoftDelete(ctx, post)
 }
 
-func (st *store) PostUpdate(post *Post) error {
+func (st *store) PostUpdate(ctx context.Context, post *Post) error {
 	if post == nil {
 		return errors.New("order is nil")
 	}
@@ -290,7 +299,7 @@ func (st *store) PostUpdate(post *Post) error {
 		log.Println(sqlStr)
 	}
 
-	_, err := st.db.Exec(sqlStr, params...)
+	_, err := st.db.ExecContext(ctx, sqlStr, params...)
 
 	post.MarkAsNotDirty()
 

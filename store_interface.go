@@ -1,17 +1,19 @@
 package blogstore
 
+import "context"
+
 type StoreInterface interface {
 	AutoMigrate() error
 	EnableDebug(debug bool) StoreInterface
 
-	PostCount(options PostQueryOptions) (int64, error)
-	PostCreate(post *Post) error
-	PostDelete(post *Post) error
-	PostDeleteByID(postID string) error
-	PostFindByID(id string) (*Post, error)
-	PostList(options PostQueryOptions) ([]Post, error)
-	PostSoftDelete(post *Post) error
-	PostSoftDeleteByID(postID string) error
-	PostTrash(post *Post) error
-	PostUpdate(post *Post) error
+	PostCount(ctx context.Context, options PostQueryOptions) (int64, error)
+	PostCreate(ctx context.Context, post *Post) error
+	PostDelete(ctx context.Context, post *Post) error
+	PostDeleteByID(ctx context.Context, postID string) error
+	PostFindByID(ctx context.Context, id string) (*Post, error)
+	PostList(ctx context.Context, options PostQueryOptions) ([]Post, error)
+	PostSoftDelete(ctx context.Context, post *Post) error
+	PostSoftDeleteByID(ctx context.Context, postID string) error
+	PostTrash(ctx context.Context, post *Post) error
+	PostUpdate(ctx context.Context, post *Post) error
 }

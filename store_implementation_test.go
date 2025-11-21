@@ -1,16 +1,15 @@
 package blogstore
 
 import (
+	"context"
 	"database/sql"
-	"os"
 	"testing"
 
 	_ "modernc.org/sqlite"
 )
 
-func initDB(filepath string) *sql.DB {
-	os.Remove(filepath) // remove database
-	dsn := filepath + "?parseTime=true"
+func initDB() *sql.DB {
+	dsn := ":memory:" + "?parseTime=true"
 	db, err := sql.Open("sqlite", dsn)
 
 	if err != nil {
@@ -21,7 +20,7 @@ func initDB(filepath string) *sql.DB {
 }
 
 func TestBlogRepositoryBlogPostCreate(t *testing.T) {
-	db := initDB(":memory:")
+	db := initDB()
 
 	store, err := NewStore(NewStoreOptions{
 		PostTableName:      "blog_posts",
@@ -37,7 +36,7 @@ func TestBlogRepositoryBlogPostCreate(t *testing.T) {
 		SetStatus(POST_STATUS_UNPUBLISHED).
 		SetTitle("1st article")
 
-	err = store.PostCreate(post)
+	err = store.PostCreate(context.Background(), post)
 
 	if err != nil {
 		t.Error("unexpected error:", err)
@@ -45,7 +44,7 @@ func TestBlogRepositoryBlogPostCreate(t *testing.T) {
 }
 
 func TestBlogRepositoryBlogPostFindByID(t *testing.T) {
-	db := initDB(":memory:")
+	db := initDB()
 
 	store, err := NewStore(NewStoreOptions{
 		PostTableName:      "blog_posts",
@@ -66,12 +65,12 @@ func TestBlogRepositoryBlogPostFindByID(t *testing.T) {
 		SetImageUrl("http://test.com/test.png").
 		SetFeatured(YES)
 
-	err = store.PostCreate(post)
+	err = store.PostCreate(context.Background(), post)
 	if err != nil {
 		t.Error("unexpected error:", err)
 	}
 
-	postFound, errFind := store.PostFindByID(post.ID())
+	postFound, errFind := store.PostFindByID(context.Background(), post.ID())
 	if errFind != nil {
 		t.Error("unexpected error:", errFind)
 	}
