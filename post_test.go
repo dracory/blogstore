@@ -7,6 +7,13 @@ import (
 	"github.com/dracory/sb"
 )
 
+// TestNewPostDefaults tests that NewPost() returns a Post with:
+// - a non-empty ID,
+// - status set to DRAFT
+// - non-empty PublishedAt,
+// - CreatedAt, UpdatedAt, SoftDeletedAt set to MAX_DATETIME
+// - Featured set to NO,
+// - Metas set to empty map.
 func TestNewPostDefaults(t *testing.T) {
 	p := NewPost()
 
