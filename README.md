@@ -8,6 +8,16 @@
 
 Stores blog posts to a database table.
 
+## MCP (Model Context Protocol)
+
+Blog Store includes an MCP (Model Context Protocol) HTTP handler that allows LLM clients (for example Windsurf) to manage blog posts via JSON-RPC tools.
+
+- The MCP handler lives in the `mcp` package
+- It supports MCP JSON-RPC methods (`initialize`, `tools/list`, `tools/call`) and legacy aliases (`list_tools`, `call_tool`)
+- It exposes tools such as `post_list`, `post_create`, `post_get`, `post_update`, and `post_delete`
+
+See the detailed documentation and examples in: `mcp/README.md`
+
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). You can find a copy of the license at [https://www.gnu.org/licenses/agpl-3.0.en.html](https://www.gnu.org/licenses/agpl-3.0.txt)
