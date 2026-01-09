@@ -104,6 +104,25 @@ func (o *Post) IsUnpublished() bool {
 	return !o.IsPublished()
 }
 
+func (o *Post) MarshalToVersioning() (string, error) {
+	versionedData := map[string]string{}
+
+	for k, v := range o.Data() {
+		if k == COLUMN_CREATED_AT ||
+			k == COLUMN_UPDATED_AT ||
+			k == COLUMN_SOFT_DELETED_AT {
+			continue
+		}
+		versionedData[k] = v
+	}
+
+	b, err := json.Marshal(versionedData)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 // ============================ SETTERS AND GETTERS ============================
 
 func (o *Post) AddMetas(metas map[string]string) error {

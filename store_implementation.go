@@ -11,6 +11,7 @@ import (
 	"github.com/doug-martin/goqu/v9"
 	"github.com/dracory/database"
 	"github.com/dracory/sb"
+	"github.com/dracory/versionstore"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
 )
@@ -24,6 +25,9 @@ type store struct {
 	timeoutSeconds     int64
 	automigrateEnabled bool
 	debugEnabled       bool
+
+	versioningEnabled bool
+	versioningStore   versionstore.StoreInterface
 }
 
 // AutoMigrate auto migrate
@@ -36,7 +40,20 @@ func (store *store) AutoMigrate() error {
 		return err
 	}
 
+	if store.versioningEnabled {
+		if store.versioningStore == nil {
+			return errors.New("versioning store is nil")
+		}
+		if err := store.versioningStore.AutoMigrate(); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func (st *store) VersioningEnabled() bool {
+	return st.versioningEnabled
 }
 
 // EnableDebug - enables the debug option

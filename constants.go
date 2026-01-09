@@ -19,6 +19,8 @@ const POST_CONTENT_TYPE_HTML = "html"
 const POST_CONTENT_TYPE_PLAIN_TEXT = "plain_text"
 const POST_CONTENT_TYPE_BLOCKS = "blocks"
 
+const VERSIONING_TYPE_POST = "post"
+
 const COLUMN_AUTHOR_ID = "author_id"
 const COLUMN_CANONICAL_URL = "canonical_url"
 const COLUMN_CONTENT = "content"

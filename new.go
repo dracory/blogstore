@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/dracory/sb"
+	"github.com/dracory/versionstore"
 )
 
 // NewStoreOptions define the options for creating a new block store
@@ -15,6 +16,9 @@ type NewStoreOptions struct {
 	TimeoutSeconds     int64
 	AutomigrateEnabled bool
 	DebugEnabled       bool
+
+	VersioningEnabled   bool
+	VersioningTableName string
 }
 
 // NewStore creates a new block store
@@ -31,12 +35,35 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 		opts.DbDriverName = sb.DatabaseDriverName(opts.DB)
 	}
 
+	if opts.VersioningEnabled && opts.VersioningTableName == "" {
+		return nil, errors.New("blog store: VersioningTableName is required")
+	}
+
+	var versionStore versionstore.StoreInterface
+	if opts.VersioningEnabled {
+		vs, err := versionstore.NewStore(versionstore.NewStoreOptions{
+			TableName:          opts.VersioningTableName,
+			DB:                 opts.DB,
+			AutomigrateEnabled: opts.AutomigrateEnabled,
+			DebugEnabled:       opts.DebugEnabled,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if vs == nil {
+			return nil, errors.New("blog store: version store is nil")
+		}
+		versionStore = vs
+	}
+
 	store := &store{
 		postTableName:      opts.PostTableName,
 		automigrateEnabled: opts.AutomigrateEnabled,
 		db:                 opts.DB,
 		dbDriverName:       opts.DbDriverName,
 		debugEnabled:       opts.DebugEnabled,
+		versioningEnabled:  opts.VersioningEnabled,
+		versioningStore:    versionStore,
 	}
 
 	store.timeoutSeconds = 2 * 60 * 60 // 2 hours

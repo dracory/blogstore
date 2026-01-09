@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/dracory/sb"
+	"github.com/dracory/versionstore"
 	_ "modernc.org/sqlite"
 )
 
@@ -17,6 +19,62 @@ func initDB() *sql.DB {
 	}
 
 	return db
+}
+
+func TestStoreVersioningCreateAndList(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:       "blog_posts",
+		VersioningTableName: "blog_posts_version",
+		VersioningEnabled:   true,
+		DB:                  db,
+		AutomigrateEnabled:  true,
+	})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	if !store.VersioningEnabled() {
+		t.Fatal("expected versioning to be enabled")
+	}
+
+	post := NewPost().
+		SetTitle("Versioned post").
+		SetStatus(POST_STATUS_DRAFT)
+
+	if err := store.PostCreate(context.Background(), post); err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	content, err := post.MarshalToVersioning()
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	if err := store.VersioningCreate(context.Background(), NewVersioning().
+		SetEntityType(VERSIONING_TYPE_POST).
+		SetEntityID(post.ID()).
+		SetContent(content)); err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	list, err := store.VersioningList(context.Background(), NewVersioningQuery().
+		SetEntityType(VERSIONING_TYPE_POST).
+		SetEntityID(post.ID()).
+		SetOrderBy(versionstore.COLUMN_CREATED_AT).
+		SetSortOrder(sb.DESC))
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	if len(list) != 1 {
+		t.Fatalf("expected 1 versioning record, got %d", len(list))
+	}
+
+	if list[0].Content() != content {
+		t.Fatal("unexpected versioning content")
+	}
 }
 
 func TestBlogRepositoryBlogPostCreate(t *testing.T) {
