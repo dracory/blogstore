@@ -102,11 +102,62 @@ Tool results are returned as:
 
 ## Supported Tools
 
-- `post_list`
-- `post_create`
-- `post_get`
-- `post_update`
-- `post_delete`
+- `blog_schema` - Get detailed schema information and field constraints
+- `post_list` - List blog posts with filtering options
+- `post_create` - Create a new blog post
+- `post_get` - Get a blog post by ID
+- `post_update` - Update an existing blog post
+- `post_delete` - Delete a blog post
+
+## Important Field Constraints
+
+### Featured Field
+The `featured` field requires string values, not boolean:
+- ✅ **Correct**: `"featured": "yes"` or `"featured": "no"`
+- ❌ **Incorrect**: `"featured": true` or `"featured": false`
+
+### Status Field
+The `status` field supports specific string values:
+- `"draft"` - Default status, not publicly visible
+- `"published"` - Publicly visible posts
+- `"unpublished"` - Hidden posts
+- `"trash"` - Deleted posts
+
+### Content Format
+The `content` field supports multiple formats:
+- **Markdown** (recommended for blog posts)
+- **HTML**
+- **Plain text**
+
+### Content Type Field
+The `content_type` field specifies how content should be rendered:
+- `"markdown"` - For Markdown content (enables proper rendering with headers, emphasis, etc.)
+- `"plain_text"` - Default for plain text content
+- `"html"` - For HTML content
+
+**Important**: Set `content_type="markdown"` when creating markdown content to ensure proper rendering!
+
+## Schema Discovery
+
+Use the `blog_schema` tool to get detailed information about entities and their constraints:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "1",
+  "method": "tools/call",
+  "params": {
+    "name": "blog_schema",
+    "arguments": {}
+  }
+}
+```
+
+This returns comprehensive schema information including:
+- Field definitions with types and descriptions
+- Allowed values for enum fields
+- Usage notes and best practices
+- Tool argument specifications
 
 ## ID typing: always use strings
 

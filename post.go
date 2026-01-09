@@ -63,12 +63,37 @@ func (o *Post) SetEditor(editor string) *Post {
 	return o
 }
 
+func (o *Post) ContentType() string {
+	return o.Meta("content_type")
+}
+
+func (o *Post) SetContentType(contentType string) *Post {
+	o.SetMeta("content_type", contentType)
+	return o
+}
+
 func (o *Post) IsDraft() bool {
 	return o.Status() == POST_STATUS_DRAFT
 }
 
 func (o *Post) IsPublished() bool {
 	return o.Status() == POST_STATUS_PUBLISHED
+}
+
+func (o *Post) IsContentMarkdown() bool {
+	return o.ContentType() == POST_CONTENT_TYPE_MARKDOWN
+}
+
+func (o *Post) IsContentHtml() bool {
+	return o.ContentType() == POST_CONTENT_TYPE_HTML
+}
+
+func (o *Post) IsContentPlainText() bool {
+	return o.ContentType() == POST_CONTENT_TYPE_PLAIN_TEXT
+}
+
+func (o *Post) IsContentBlocks() bool {
+	return o.ContentType() == POST_CONTENT_TYPE_BLOCKS
 }
 
 func (o *Post) IsTrashed() bool {

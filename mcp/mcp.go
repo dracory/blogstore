@@ -204,7 +204,7 @@ func toolTextResult(text string) map[string]any {
 	}
 }
 
-func (m *MCP) handleInitialize(w http.ResponseWriter, ctx context.Context, id any, params json.RawMessage) {
+func (m *MCP) handleInitialize(w http.ResponseWriter, _ context.Context, id any, params json.RawMessage) {
 	var p struct {
 		ProtocolVersion string `json:"protocolVersion"`
 		ClientInfo      any    `json:"clientInfo"`
@@ -231,12 +231,17 @@ func (m *MCP) handleInitialize(w http.ResponseWriter, ctx context.Context, id an
 	writeJSON(w, http.StatusOK, jsonRPCResultResponse(id, result))
 }
 
-func (m *MCP) handleInitialized(w http.ResponseWriter, ctx context.Context) {
+func (m *MCP) handleInitialized(w http.ResponseWriter, _ context.Context) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (m *MCP) handleToolsList(w http.ResponseWriter, ctx context.Context, id any) {
+func (m *MCP) handleToolsList(w http.ResponseWriter, _ context.Context, id any) {
 	tools := []map[string]any{
+		{
+			"name":        "blog_schema",
+			"description": "Get schema information about blog entities and their field constraints",
+			"inputSchema": map[string]any{"type": "object"},
+		},
 		{
 			"name":        "post_list",
 			"description": "List blog posts",
@@ -263,13 +268,14 @@ func (m *MCP) handleToolsList(w http.ResponseWriter, ctx context.Context, id any
 				"properties": map[string]any{
 					"id":               map[string]any{"type": "string"},
 					"title":            map[string]any{"type": "string"},
-					"content":          map[string]any{"type": "string"},
+					"content":          map[string]any{"type": "string", "description": "Post content"},
+					"content_type":     map[string]any{"type": "string", "enum": []string{"markdown", "html", "plain_text"}, "default": "plain_text", "description": "Content format type for proper rendering"},
 					"summary":          map[string]any{"type": "string"},
-					"status":           map[string]any{"type": "string"},
+					"status":           map[string]any{"type": "string", "enum": []string{"draft", "published", "unpublished", "trash"}},
 					"author_id":        map[string]any{"type": "string"},
 					"canonical_url":    map[string]any{"type": "string"},
 					"image_url":        map[string]any{"type": "string"},
-					"featured":         map[string]any{"type": "string"},
+					"featured":         map[string]any{"type": "string", "enum": []string{"yes", "no"}, "description": "Whether the post is featured (use 'yes' or 'no')"},
 					"published_at":     map[string]any{"type": "string"},
 					"meta_description": map[string]any{"type": "string"},
 					"meta_keywords":    map[string]any{"type": "string"},
@@ -301,13 +307,14 @@ func (m *MCP) handleToolsList(w http.ResponseWriter, ctx context.Context, id any
 						"type": "object",
 						"properties": map[string]any{
 							"title":            map[string]any{"type": "string"},
-							"content":          map[string]any{"type": "string"},
+							"content":          map[string]any{"type": "string", "description": "Post content"},
+							"content_type":     map[string]any{"type": "string", "enum": []string{"markdown", "html", "plain_text"}, "description": "Content format type for proper rendering"},
 							"summary":          map[string]any{"type": "string"},
-							"status":           map[string]any{"type": "string"},
+							"status":           map[string]any{"type": "string", "enum": []string{"draft", "published", "unpublished", "trash"}},
 							"author_id":        map[string]any{"type": "string"},
 							"canonical_url":    map[string]any{"type": "string"},
 							"image_url":        map[string]any{"type": "string"},
-							"featured":         map[string]any{"type": "string"},
+							"featured":         map[string]any{"type": "string", "enum": []string{"yes", "no"}, "description": "Whether the post is featured (use 'yes' or 'no')"},
 							"published_at":     map[string]any{"type": "string"},
 							"meta_description": map[string]any{"type": "string"},
 							"meta_keywords":    map[string]any{"type": "string"},
@@ -375,6 +382,8 @@ func (m *MCP) handleToolsCall(w http.ResponseWriter, ctx context.Context, id any
 
 func (m *MCP) dispatchTool(ctx context.Context, toolName string, args map[string]any) (string, error) {
 	switch toolName {
+	case "blog_schema":
+		return m.toolBlogSchema(ctx, args)
 	case "post_list":
 		return m.toolPostList(ctx, args)
 	case "post_create":
@@ -395,6 +404,115 @@ func postToMap(post *blogstore.Post) map[string]string {
 		return map[string]string{}
 	}
 	return post.Data()
+}
+
+// contentTypeToEditor converts content_type to editor field
+func contentTypeToEditor(contentType string) string {
+	switch contentType {
+	case blogstore.POST_CONTENT_TYPE_MARKDOWN:
+		return blogstore.POST_EDITOR_MARKDOWN
+	case blogstore.POST_CONTENT_TYPE_HTML:
+		return blogstore.POST_EDITOR_HTMLAREA
+	case blogstore.POST_CONTENT_TYPE_PLAIN_TEXT:
+		return blogstore.POST_EDITOR_TEXTAREA
+	default:
+		return blogstore.POST_EDITOR_TEXTAREA
+	}
+}
+
+func (m *MCP) toolBlogSchema(_ context.Context, _ map[string]any) (string, error) {
+	schema := map[string]any{
+		"entities": map[string]any{
+			"post": map[string]any{
+				"fields": []map[string]any{
+					{"name": "id", "type": "string", "description": "Unique identifier for the post"},
+					{"name": "title", "type": "string", "description": "Post title"},
+					{"name": "content", "type": "string", "description": "Post content"},
+					{"name": "content_type", "type": "string", "enum": []string{"markdown", "html", "plain_text"}, "description": "Content format type for proper rendering"},
+					{"name": "summary", "type": "string", "description": "Brief summary of the post"},
+					{"name": "status", "type": "string", "enum": []string{"draft", "published", "unpublished", "trash"}, "description": "Publication status"},
+					{"name": "author_id", "type": "string", "description": "ID of the post author"},
+					{"name": "canonical_url", "type": "string", "description": "Canonical URL for SEO"},
+					{"name": "image_url", "type": "string", "description": "URL to featured image"},
+					{"name": "featured", "type": "string", "enum": []string{"yes", "no"}, "description": "Whether the post is featured (use 'yes' or 'no')"},
+					{"name": "published_at", "type": "string", "description": "Publication timestamp"},
+					{"name": "meta_description", "type": "string", "description": "SEO meta description"},
+					{"name": "meta_keywords", "type": "string", "description": "SEO meta keywords"},
+					{"name": "meta_robots", "type": "string", "description": "SEO meta robots tag"},
+					{"name": "memo", "type": "string", "description": "Internal notes"},
+					{"name": "created_at", "type": "string", "description": "Creation timestamp"},
+					{"name": "updated_at", "type": "string", "description": "Last update timestamp"},
+					{"name": "soft_deleted_at", "type": "string", "description": "Soft deletion timestamp"},
+				},
+				"field_constraints": map[string]any{
+					"featured": map[string]any{
+						"allowed_values": []string{"yes", "no"},
+						"default":        "no",
+						"description":    "Must be exactly 'yes' or 'no' (not boolean true/false)",
+					},
+					"status": map[string]any{
+						"allowed_values": []string{"draft", "published", "unpublished", "trash"},
+						"default":        "draft",
+						"description":    "Publication status of the post",
+					},
+					"content_type": map[string]any{
+						"allowed_values": []string{"markdown", "html", "plain_text"},
+						"default":        "plain_text",
+						"description":    "Specifies how content should be rendered. Use 'markdown' for Markdown content.",
+					},
+					"content": map[string]any{
+						"description": "Post content. The rendering is determined by the content_type field.",
+					},
+				},
+			},
+		},
+		"tools": map[string]any{
+			"post_list": map[string]any{
+				"description": "List blog posts with filtering options",
+				"arguments": map[string]any{
+					"limit":        map[string]any{"type": "integer", "description": "Maximum number of posts to return"},
+					"offset":       map[string]any{"type": "integer", "description": "Number of posts to skip"},
+					"status":       map[string]any{"type": "string", "description": "Filter by status (draft, published, etc.)"},
+					"search":       map[string]any{"type": "string", "description": "Search term for title/content"},
+					"with_deleted": map[string]any{"type": "boolean", "description": "Include deleted posts"},
+				},
+			},
+			"post_create": map[string]any{
+				"description":        "Create a new blog post",
+				"required_arguments": []string{"title"},
+				"arguments": map[string]any{
+					"title":        map[string]any{"type": "string", "required": true, "description": "Post title"},
+					"content":      map[string]any{"type": "string", "description": "Post content"},
+					"content_type": map[string]any{"type": "string", "enum": []string{"markdown", "html", "plain_text"}, "default": "plain_text", "description": "Content format type for proper rendering"},
+					"featured":     map[string]any{"type": "string", "enum": []string{"yes", "no"}, "default": "no", "description": "Use 'yes' or 'no' only"},
+					"status":       map[string]any{"type": "string", "enum": []string{"draft", "published", "unpublished", "trash"}, "default": "draft"},
+				},
+			},
+			"post_update": map[string]any{
+				"description":        "Update an existing blog post",
+				"required_arguments": []string{"id"},
+				"arguments": map[string]any{
+					"featured":     map[string]any{"type": "string", "enum": []string{"yes", "no"}, "description": "Use 'yes' or 'no' only"},
+					"status":       map[string]any{"type": "string", "enum": []string{"draft", "published", "unpublished", "trash"}},
+					"content":      map[string]any{"type": "string", "description": "Post content"},
+					"content_type": map[string]any{"type": "string", "enum": []string{"markdown", "html", "plain_text"}, "description": "Content format type for proper rendering"},
+				},
+			},
+		},
+		"usage_notes": []string{
+			"The 'featured' field requires string values 'yes' or 'no', not boolean true/false",
+			"Content supports Markdown format - use # for headers, * for emphasis, etc.",
+			"Use 'published' status to make posts publicly visible",
+			"Technical posts should have featured='yes' and include meta keywords",
+			"Set content_type='markdown' for markdown content to enable proper rendering",
+		},
+	}
+
+	result, err := json.Marshal(schema)
+	if err != nil {
+		return "", err
+	}
+	return string(result), nil
 }
 
 func (m *MCP) toolPostList(ctx context.Context, args map[string]any) (string, error) {
@@ -463,8 +581,25 @@ func (m *MCP) toolPostCreate(ctx context.Context, args map[string]any) (string, 
 		post.SetImageUrl(v)
 	}
 	if v := argString(args, "featured"); v != "" {
+		if v != "yes" && v != "no" {
+			return "", errors.New("featured field must be 'yes' or 'no', not boolean true/false")
+		}
 		post.SetFeatured(v)
 	}
+
+	// Set editor based on content_type
+	contentType := argString(args, "content_type")
+	if contentType == "" {
+		contentType = blogstore.POST_CONTENT_TYPE_PLAIN_TEXT // default
+	}
+
+	// Store content_type using the new method
+	post.SetContentType(contentType)
+
+	// Set editor based on content_type for rendering
+	editor := contentTypeToEditor(contentType)
+	post.SetEditor(editor)
+
 	if v := argString(args, "published_at"); v != "" {
 		post.SetPublishedAt(v)
 	}
@@ -561,8 +696,22 @@ func (m *MCP) toolPostUpdate(ctx context.Context, args map[string]any) (string, 
 		post.SetImageUrl(v)
 	}
 	if v := argString(updates, "featured"); v != "" {
+		if v != "yes" && v != "no" {
+			return "", errors.New("featured field must be 'yes' or 'no', not boolean true/false")
+		}
 		post.SetFeatured(v)
 	}
+
+	// Update editor based on content_type if provided
+	if contentType := argString(updates, "content_type"); contentType != "" {
+		// Store content_type using the new method
+		post.SetContentType(contentType)
+
+		// Update editor for rendering
+		editor := contentTypeToEditor(contentType)
+		post.SetEditor(editor)
+	}
+
 	if v := argString(updates, "published_at"); v != "" {
 		post.SetPublishedAt(v)
 	}
