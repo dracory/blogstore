@@ -151,7 +151,7 @@ func TestPostCreateWithContentType(t *testing.T) {
 				"id":      "1",
 				"method":  "tools/call",
 				"params": map[string]any{
-					"name": "post_create",
+					"name": "post_upsert",
 					"arguments": map[string]any{
 						"title":        "Test Post",
 						"content":      tt.content,
@@ -237,6 +237,9 @@ func TestPostUpdateWithContentType(t *testing.T) {
 	err = store.PostCreate(context.Background(), post)
 	require.NoError(t, err)
 
+	// Verify post was created and has an ID
+	require.NotEmpty(t, post.ID(), "Post should have an ID after creation")
+
 	// Test updating content_type
 	tests := []struct {
 		name        string
@@ -266,19 +269,23 @@ func TestPostUpdateWithContentType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Update request
+			// Verify post exists before update
+			existingPost, err := store.PostFindByID(context.Background(), post.ID())
+			require.NoError(t, err)
+			require.NotNil(t, existingPost, "Post should exist before update")
+			t.Logf("Updating post with ID: %s", post.ID())
+
+			// Update request using post_upsert
 			request := map[string]any{
 				"jsonrpc": "2.0",
 				"id":      "1",
 				"method":  "tools/call",
 				"params": map[string]any{
-					"name": "post_update",
+					"name": "post_upsert",
 					"arguments": map[string]any{
-						"id": post.ID(),
-						"updates": map[string]any{
-							"content":      tt.content,
-							"content_type": tt.contentType,
-						},
+						"id":           post.ID(),
+						"content":      tt.content,
+						"content_type": tt.contentType,
 					},
 				},
 			}
@@ -337,7 +344,7 @@ func TestPostCreateWithoutContentType(t *testing.T) {
 		"id":      "1",
 		"method":  "tools/call",
 		"params": map[string]any{
-			"name": "post_create",
+			"name": "post_upsert",
 			"arguments": map[string]any{
 				"title":   "Test Post",
 				"content": "Some content",
@@ -537,23 +544,23 @@ func TestContentTypeValidation(t *testing.T) {
 	err = json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
-	// Find post_create tool and check content_type validation
-	var postCreateTool struct {
+	// Find post_upsert tool and check content_type validation
+	var postUpsertTool struct {
 		Name        string         `json:"name"`
 		InputSchema map[string]any `json:"inputSchema"`
 	}
 	found := false
 	for _, tool := range response.Result.Tools {
-		if tool.Name == "post_create" {
-			postCreateTool = tool
+		if tool.Name == "post_upsert" {
+			postUpsertTool = tool
 			found = true
 			break
 		}
 	}
 
-	require.True(t, found, "post_create tool should be found")
+	require.True(t, found, "post_upsert tool should be found")
 
-	properties, ok := postCreateTool.InputSchema["properties"].(map[string]any)
+	properties, ok := postUpsertTool.InputSchema["properties"].(map[string]any)
 	require.True(t, ok)
 
 	contentType, ok := properties["content_type"].(map[string]any)

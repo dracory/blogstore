@@ -154,8 +154,8 @@ func Test_MCP_ToolsList_StandardMethod(t *testing.T) {
 	}
 
 	respStr := string(bodyBytes)
-	if !strings.Contains(respStr, "post_create") {
-		t.Fatalf("Expected tools list to contain post_create: %s", respStr)
+	if !strings.Contains(respStr, "post_upsert") {
+		t.Fatalf("Expected tools list to contain post_upsert: %s", respStr)
 	}
 	if !strings.Contains(respStr, "post_list") {
 		t.Fatalf("Expected tools list to contain post_list: %s", respStr)
@@ -171,13 +171,13 @@ func Test_MCP_ToolsCall_StandardMethod_PostCRUD(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Create
+	// Create using upsert (no ID provided)
 	createReq := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      "1",
 		"method":  "tools/call",
 		"params": map[string]any{
-			"name": "post_create",
+			"name": "post_upsert",
 			"arguments": map[string]any{
 				"title":   "Hello",
 				"content": "World",
@@ -235,13 +235,13 @@ func Test_MCP_ToolsCall_StandardMethod_PostCRUD(t *testing.T) {
 		t.Fatalf("Expected get response to contain id. Got: %s", getText)
 	}
 
-	// Update (flat args)
+	// Update using upsert (ID provided)
 	updateReq := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      "3",
 		"method":  "tools/call",
 		"params": map[string]any{
-			"name": "post_update",
+			"name": "post_upsert",
 			"arguments": map[string]any{
 				"id":    postID,
 				"title": "Updated Title",
@@ -294,27 +294,85 @@ func Test_MCP_ToolsCall_StandardMethod_PostCRUD(t *testing.T) {
 	}
 }
 
-func Test_MCP_PostUpdate_WithNumericID_UsesNumber(t *testing.T) {
-	server, store, cleanup := initMCPServerWithStore(t)
-	defer cleanup()
+func Test_MCP_PostUpsert_CreateAndUpdate(t *testing.T) {
+	db := initDB(t)
+	defer db.Close()
+
+	store, err := blogstore.NewStore(blogstore.NewStoreOptions{
+		DB:                  db,
+		PostTableName:       "posts",
+		AutomigrateEnabled:  true,
+		VersioningEnabled:   true,
+		VersioningTableName: "versioning_table",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+
+	mcpServer := mcp.NewMCP(store)
+	server := httptest.NewServer(http.HandlerFunc(mcpServer.Handler))
+	defer server.Close()
 
 	ctx := context.Background()
 
-	post := blogstore.NewPost().SetTitle("Numeric ID Test")
-	if err := store.PostCreate(ctx, post); err != nil {
-		t.Fatalf("PostCreate() error: %v", err)
-	}
-
-	// Send id as json.Number (simulates LLM numeric conversions without float64)
-	updateReq := map[string]any{
+	// Test 1: Create new post with upsert (no ID provided)
+	createReq := map[string]any{
 		"jsonrpc": "2.0",
 		"id":      "1",
 		"method":  "tools/call",
 		"params": map[string]any{
-			"name": "post_update",
+			"name": "post_upsert",
 			"arguments": map[string]any{
-				"id":    json.Number(post.ID()),
-				"title": "Updated",
+				"title":        "New Upsert Post",
+				"content":      "Test content",
+				"content_type": "markdown",
+				"status":       "draft",
+			},
+		},
+	}
+
+	createBody, _ := json.Marshal(createReq)
+	createResp, err := http.Post(server.URL, "application/json", bytes.NewBuffer(createBody))
+	if err != nil {
+		t.Fatalf("Failed to send create upsert request: %v", err)
+	}
+	createRespBytes, _ := io.ReadAll(createResp.Body)
+	createResp.Body.Close()
+
+	createText := rpcResultText(t, createRespBytes)
+	var createResult map[string]any
+	if err := json.Unmarshal([]byte(createText), &createResult); err != nil {
+		t.Fatalf("Failed to parse create result: %v", err)
+	}
+
+	postID, ok := createResult["id"].(string)
+	if !ok || postID == "" {
+		t.Fatalf("Expected create response to contain post ID. Got: %s", createText)
+	}
+
+	// Verify post was created
+	post, err := store.PostFindByID(ctx, postID)
+	if err != nil {
+		t.Fatalf("Failed to find created post: %v", err)
+	}
+	if post == nil {
+		t.Fatalf("Created post not found")
+	}
+
+	// Test 2: Update existing post with upsert (ID provided)
+	updateReq := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      "2",
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "post_upsert",
+			"arguments": map[string]any{
+				"id":           postID,
+				"title":        "Updated Upsert Post",
+				"content":      "Updated content",
+				"content_type": "markdown",
+				"status":       "published",
+				"featured":     "yes",
 			},
 		},
 	}
@@ -322,13 +380,37 @@ func Test_MCP_PostUpdate_WithNumericID_UsesNumber(t *testing.T) {
 	updateBody, _ := json.Marshal(updateReq)
 	updateResp, err := http.Post(server.URL, "application/json", bytes.NewBuffer(updateBody))
 	if err != nil {
-		t.Fatalf("Failed to send update request: %v", err)
+		t.Fatalf("Failed to send update upsert request: %v", err)
 	}
 	updateRespBytes, _ := io.ReadAll(updateResp.Body)
 	updateResp.Body.Close()
 
 	updateText := rpcResultText(t, updateRespBytes)
-	if !strings.Contains(updateText, "Updated") {
-		t.Fatalf("Expected update response to contain updated title. Got: %s", updateText)
+	var updateResult map[string]any
+	if err := json.Unmarshal([]byte(updateText), &updateResult); err != nil {
+		t.Fatalf("Failed to parse update result: %v", err)
+	}
+
+	if updateResult["id"].(string) != postID {
+		t.Fatalf("Expected same post ID after update. Got: %v", updateResult["id"])
+	}
+
+	if updateResult["title"].(string) != "Updated Upsert Post" {
+		t.Fatalf("Expected updated title. Got: %v", updateResult["title"])
+	}
+
+	// Verify post was updated
+	updatedPost, err := store.PostFindByID(ctx, postID)
+	if err != nil {
+		t.Fatalf("Failed to find updated post: %v", err)
+	}
+	if updatedPost.Title() != "Updated Upsert Post" {
+		t.Fatalf("Expected post title to be updated. Got: %s", updatedPost.Title())
+	}
+	if updatedPost.Status() != "published" {
+		t.Fatalf("Expected post status to be published. Got: %s", updatedPost.Status())
+	}
+	if updatedPost.Featured() != "yes" {
+		t.Fatalf("Expected post to be featured. Got: %s", updatedPost.Featured())
 	}
 }

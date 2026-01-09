@@ -260,8 +260,19 @@ func (m *MCP) handleToolsList(w http.ResponseWriter, _ context.Context, id any) 
 			},
 		},
 		{
-			"name":        "post_create",
-			"description": "Create a blog post",
+			"name":        "post_get",
+			"description": "Get a blog post by ID",
+			"inputSchema": map[string]any{
+				"type":     "object",
+				"required": []string{"id"},
+				"properties": map[string]any{
+					"id": map[string]any{"type": "string"},
+				},
+			},
+		},
+		{
+			"name":        "post_upsert",
+			"description": "Create or update a blog post",
 			"inputSchema": map[string]any{
 				"type":     "object",
 				"required": []string{"title"},
@@ -281,47 +292,6 @@ func (m *MCP) handleToolsList(w http.ResponseWriter, _ context.Context, id any) 
 					"meta_keywords":    map[string]any{"type": "string"},
 					"meta_robots":      map[string]any{"type": "string"},
 					"memo":             map[string]any{"type": "string"},
-				},
-			},
-		},
-		{
-			"name":        "post_get",
-			"description": "Get a blog post by ID",
-			"inputSchema": map[string]any{
-				"type":     "object",
-				"required": []string{"id"},
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-				},
-			},
-		},
-		{
-			"name":        "post_update",
-			"description": "Update a blog post",
-			"inputSchema": map[string]any{
-				"type":     "object",
-				"required": []string{"id"},
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-					"updates": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"title":            map[string]any{"type": "string"},
-							"content":          map[string]any{"type": "string", "description": "Post content"},
-							"content_type":     map[string]any{"type": "string", "enum": []string{"markdown", "html", "plain_text"}, "description": "Content format type for proper rendering"},
-							"summary":          map[string]any{"type": "string"},
-							"status":           map[string]any{"type": "string", "enum": []string{"draft", "published", "unpublished", "trash"}},
-							"author_id":        map[string]any{"type": "string"},
-							"canonical_url":    map[string]any{"type": "string"},
-							"image_url":        map[string]any{"type": "string"},
-							"featured":         map[string]any{"type": "string", "enum": []string{"yes", "no"}, "description": "Whether the post is featured (use 'yes' or 'no')"},
-							"published_at":     map[string]any{"type": "string"},
-							"meta_description": map[string]any{"type": "string"},
-							"meta_keywords":    map[string]any{"type": "string"},
-							"meta_robots":      map[string]any{"type": "string"},
-							"memo":             map[string]any{"type": "string"},
-						},
-					},
 				},
 			},
 		},
@@ -386,12 +356,10 @@ func (m *MCP) dispatchTool(ctx context.Context, toolName string, args map[string
 		return m.toolBlogSchema(ctx, args)
 	case "post_list":
 		return m.toolPostList(ctx, args)
-	case "post_create":
-		return m.toolPostCreate(ctx, args)
 	case "post_get":
 		return m.toolPostGet(ctx, args)
-	case "post_update":
-		return m.toolPostUpdate(ctx, args)
+	case "post_upsert":
+		return m.toolPostUpsert(ctx, args)
 	case "post_delete":
 		return m.toolPostDelete(ctx, args)
 	default:
@@ -477,25 +445,16 @@ func (m *MCP) toolBlogSchema(_ context.Context, _ map[string]any) (string, error
 					"with_deleted": map[string]any{"type": "boolean", "description": "Include deleted posts"},
 				},
 			},
-			"post_create": map[string]any{
-				"description":        "Create a new blog post",
+			"post_upsert": map[string]any{
+				"description":        "Create or update a blog post (single operation for both create and update)",
 				"required_arguments": []string{"title"},
 				"arguments": map[string]any{
+					"id":           map[string]any{"type": "string", "description": "Post ID (required for updates, optional for creates)"},
 					"title":        map[string]any{"type": "string", "required": true, "description": "Post title"},
 					"content":      map[string]any{"type": "string", "description": "Post content"},
 					"content_type": map[string]any{"type": "string", "enum": []string{"markdown", "html", "plain_text"}, "default": "plain_text", "description": "Content format type for proper rendering"},
 					"featured":     map[string]any{"type": "string", "enum": []string{"yes", "no"}, "default": "no", "description": "Use 'yes' or 'no' only"},
 					"status":       map[string]any{"type": "string", "enum": []string{"draft", "published", "unpublished", "trash"}, "default": "draft"},
-				},
-			},
-			"post_update": map[string]any{
-				"description":        "Update an existing blog post",
-				"required_arguments": []string{"id"},
-				"arguments": map[string]any{
-					"featured":     map[string]any{"type": "string", "enum": []string{"yes", "no"}, "description": "Use 'yes' or 'no' only"},
-					"status":       map[string]any{"type": "string", "enum": []string{"draft", "published", "unpublished", "trash"}},
-					"content":      map[string]any{"type": "string", "description": "Post content"},
-					"content_type": map[string]any{"type": "string", "enum": []string{"markdown", "html", "plain_text"}, "description": "Content format type for proper rendering"},
 				},
 			},
 		},
@@ -505,6 +464,7 @@ func (m *MCP) toolBlogSchema(_ context.Context, _ map[string]any) (string, error
 			"Use 'published' status to make posts publicly visible",
 			"Technical posts should have featured='yes' and include meta keywords",
 			"Set content_type='markdown' for markdown content to enable proper rendering",
+			"Use 'post_upsert' for simplified create/update operations - single method handles both cases",
 		},
 	}
 
@@ -549,19 +509,73 @@ func (m *MCP) toolPostList(ctx context.Context, args map[string]any) (string, er
 	return string(b), nil
 }
 
-func (m *MCP) toolPostCreate(ctx context.Context, args map[string]any) (string, error) {
-	title := argString(args, "title")
-	if strings.TrimSpace(title) == "" {
-		return "", errors.New("title is required")
+func (m *MCP) toolPostGet(ctx context.Context, args map[string]any) (string, error) {
+	id := argString(args, "id")
+	if strings.TrimSpace(id) == "" {
+		return "", errors.New("id is required")
 	}
 
-	post := blogstore.NewPost()
-	if id := argString(args, "id"); strings.TrimSpace(id) != "" {
-		post.SetID(id)
+	post, err := m.store.PostFindByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if post == nil {
+		return "", errors.New("post not found")
 	}
 
-	post.SetTitle(title)
+	b, _ := json.Marshal(postToMap(post))
+	return string(b), nil
+}
 
+func (m *MCP) toolPostDelete(ctx context.Context, args map[string]any) (string, error) {
+	id := argString(args, "id")
+	if strings.TrimSpace(id) == "" {
+		return "", errors.New("id is required")
+	}
+
+	if err := m.store.PostDeleteByID(ctx, id); err != nil {
+		return "", err
+	}
+
+	b, _ := json.Marshal(map[string]any{"deleted": true, "id": id})
+	return string(b), nil
+}
+
+func (m *MCP) toolPostUpsert(ctx context.Context, args map[string]any) (string, error) {
+	id := argString(args, "id")
+	var post *blogstore.Post
+	var err error
+	isUpdate := false
+
+	// Try to find existing post if ID is provided
+	if strings.TrimSpace(id) != "" {
+		post, err = m.store.PostFindByID(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		if post != nil {
+			isUpdate = true
+		}
+	}
+
+	// Create new post if not found or no ID provided
+	if post == nil {
+		title := argString(args, "title")
+		if strings.TrimSpace(title) == "" {
+			return "", errors.New("title is required for new posts")
+		}
+
+		post = blogstore.NewPost()
+		if strings.TrimSpace(id) != "" {
+			post.SetID(id)
+		}
+		post.SetTitle(title)
+	}
+
+	// Set/update all fields (only if provided)
+	if v := argString(args, "title"); v != "" {
+		post.SetTitle(v)
+	}
 	if v := argString(args, "content"); v != "" {
 		post.SetContent(v)
 	}
@@ -590,7 +604,12 @@ func (m *MCP) toolPostCreate(ctx context.Context, args map[string]any) (string, 
 	// Set editor based on content_type
 	contentType := argString(args, "content_type")
 	if contentType == "" {
-		contentType = blogstore.POST_CONTENT_TYPE_PLAIN_TEXT // default
+		// If updating existing post and no content_type provided, keep current
+		if post.ContentType() == "" {
+			contentType = blogstore.POST_CONTENT_TYPE_PLAIN_TEXT
+		} else {
+			contentType = post.ContentType()
+		}
 	}
 
 	// Store content_type using the new method
@@ -616,136 +635,23 @@ func (m *MCP) toolPostCreate(ctx context.Context, args map[string]any) (string, 
 		post.SetMemo(v)
 	}
 
-	if err := m.store.PostCreate(ctx, post); err != nil {
-		return "", err
-	}
-
-	b, _ := json.Marshal(map[string]any{"id": post.ID(), "title": post.Title()})
-	return string(b), nil
-}
-
-func (m *MCP) toolPostGet(ctx context.Context, args map[string]any) (string, error) {
-	id := argString(args, "id")
-	if strings.TrimSpace(id) == "" {
-		return "", errors.New("id is required")
-	}
-
-	post, err := m.store.PostFindByID(ctx, id)
-	if err != nil {
-		return "", err
-	}
-	if post == nil {
-		return "", errors.New("post not found")
-	}
-
-	b, _ := json.Marshal(postToMap(post))
-	return string(b), nil
-}
-
-func (m *MCP) toolPostUpdate(ctx context.Context, args map[string]any) (string, error) {
-	id := argString(args, "id")
-	if strings.TrimSpace(id) == "" {
-		return "", errors.New("id is required")
-	}
-
-	post, err := m.store.PostFindByID(ctx, id)
-	if err != nil {
-		return "", err
-	}
-	if post == nil {
-		return "", errors.New("post not found")
-	}
-
-	updates := map[string]any{}
-	if v, ok := args["updates"]; ok {
-		if m2, ok2 := v.(map[string]any); ok2 {
-			updates = m2
+	// Create or update based on whether we found an existing post
+	if isUpdate {
+		// Update existing post
+		if err := m.store.PostUpdate(ctx, post); err != nil {
+			return "", err
+		}
+	} else {
+		// Create new post
+		if err := m.store.PostCreate(ctx, post); err != nil {
+			return "", err
 		}
 	}
 
-	// Support flat update arguments too
-	for k, v := range args {
-		if k == "id" || k == "updates" {
-			continue
-		}
-		if _, exists := updates[k]; exists {
-			continue
-		}
-		updates[k] = v
-	}
-
-	if v := argString(updates, "title"); v != "" {
-		post.SetTitle(v)
-	}
-	if v := argString(updates, "content"); v != "" {
-		post.SetContent(v)
-	}
-	if v := argString(updates, "summary"); v != "" {
-		post.SetSummary(v)
-	}
-	if v := argString(updates, "status"); v != "" {
-		post.SetStatus(v)
-	}
-	if v := argString(updates, "author_id"); v != "" {
-		post.SetAuthorID(v)
-	}
-	if v := argString(updates, "canonical_url"); v != "" {
-		post.SetCanonicalURL(v)
-	}
-	if v := argString(updates, "image_url"); v != "" {
-		post.SetImageUrl(v)
-	}
-	if v := argString(updates, "featured"); v != "" {
-		if v != "yes" && v != "no" {
-			return "", errors.New("featured field must be 'yes' or 'no', not boolean true/false")
-		}
-		post.SetFeatured(v)
-	}
-
-	// Update editor based on content_type if provided
-	if contentType := argString(updates, "content_type"); contentType != "" {
-		// Store content_type using the new method
-		post.SetContentType(contentType)
-
-		// Update editor for rendering
-		editor := contentTypeToEditor(contentType)
-		post.SetEditor(editor)
-	}
-
-	if v := argString(updates, "published_at"); v != "" {
-		post.SetPublishedAt(v)
-	}
-	if v := argString(updates, "meta_description"); v != "" {
-		post.SetMetaDescription(v)
-	}
-	if v := argString(updates, "meta_keywords"); v != "" {
-		post.SetMetaKeywords(v)
-	}
-	if v := argString(updates, "meta_robots"); v != "" {
-		post.SetMetaRobots(v)
-	}
-	if v := argString(updates, "memo"); v != "" {
-		post.SetMemo(v)
-	}
-
-	if err := m.store.PostUpdate(ctx, post); err != nil {
-		return "", err
-	}
-
-	b, _ := json.Marshal(map[string]any{"id": post.ID(), "title": post.Title()})
-	return string(b), nil
-}
-
-func (m *MCP) toolPostDelete(ctx context.Context, args map[string]any) (string, error) {
-	id := argString(args, "id")
-	if strings.TrimSpace(id) == "" {
-		return "", errors.New("id is required")
-	}
-
-	if err := m.store.PostDeleteByID(ctx, id); err != nil {
-		return "", err
-	}
-
-	b, _ := json.Marshal(map[string]any{"deleted": true, "id": id})
+	b, _ := json.Marshal(map[string]any{
+		"id":     post.ID(),
+		"title":  post.Title(),
+		"action": "upserted",
+	})
 	return string(b), nil
 }

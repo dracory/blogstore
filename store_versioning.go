@@ -40,9 +40,7 @@ func (store *store) VersioningList(ctx context.Context, query VersioningQueryInt
 	}
 
 	newList := make([]VersioningInterface, len(list))
-	for i, v := range list {
-		newList[i] = v
-	}
+	copy(newList, list)
 	return newList, nil
 }
 
