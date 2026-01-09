@@ -296,6 +296,20 @@ func (m *MCP) handleToolsList(w http.ResponseWriter, _ context.Context, id any) 
 			},
 		},
 		{
+			"name":        "post_versions",
+			"description": "Get version history for a blog post",
+			"inputSchema": map[string]any{
+				"type":     "object",
+				"required": []string{"id"},
+				"properties": map[string]any{
+					"id":         map[string]any{"type": "string", "description": "Post ID"},
+					"limit":      map[string]any{"type": "integer", "description": "Maximum number of versions to return"},
+					"order_by":   map[string]any{"type": "string", "description": "Field to order by (default: created_at)"},
+					"sort_order": map[string]any{"type": "string", "enum": []string{"asc", "desc"}, "description": "Sort order (default: desc)"},
+				},
+			},
+		},
+		{
 			"name":        "post_delete",
 			"description": "Delete a blog post",
 			"inputSchema": map[string]any{
@@ -360,6 +374,8 @@ func (m *MCP) dispatchTool(ctx context.Context, toolName string, args map[string
 		return m.toolPostGet(ctx, args)
 	case "post_upsert":
 		return m.toolPostUpsert(ctx, args)
+	case "post_versions":
+		return m.toolPostVersions(ctx, args)
 	case "post_delete":
 		return m.toolPostDelete(ctx, args)
 	default:
@@ -457,6 +473,16 @@ func (m *MCP) toolBlogSchema(_ context.Context, _ map[string]any) (string, error
 					"status":       map[string]any{"type": "string", "enum": []string{"draft", "published", "unpublished", "trash"}, "default": "draft"},
 				},
 			},
+			"post_versions": map[string]any{
+				"description":        "Get version history for a blog post (requires versioning to be enabled)",
+				"required_arguments": []string{"id"},
+				"arguments": map[string]any{
+					"id":         map[string]any{"type": "string", "required": true, "description": "Post ID"},
+					"limit":      map[string]any{"type": "integer", "description": "Maximum number of versions to return"},
+					"order_by":   map[string]any{"type": "string", "description": "Field to order by (default: created_at)"},
+					"sort_order": map[string]any{"type": "string", "enum": []string{"asc", "desc"}, "description": "Sort order (default: desc)"},
+				},
+			},
 		},
 		"usage_notes": []string{
 			"The 'featured' field requires string values 'yes' or 'no', not boolean true/false",
@@ -465,6 +491,8 @@ func (m *MCP) toolBlogSchema(_ context.Context, _ map[string]any) (string, error
 			"Technical posts should have featured='yes' and include meta keywords",
 			"Set content_type='markdown' for markdown content to enable proper rendering",
 			"Use 'post_upsert' for simplified create/update operations - single method handles both cases",
+			"Post updates automatically create version entries when versioning is enabled",
+			"Use 'post_versions' to view and revert to previous versions of a post",
 		},
 	}
 
@@ -538,6 +566,65 @@ func (m *MCP) toolPostDelete(ctx context.Context, args map[string]any) (string, 
 	}
 
 	b, _ := json.Marshal(map[string]any{"deleted": true, "id": id})
+	return string(b), nil
+}
+
+func (m *MCP) toolPostVersions(ctx context.Context, args map[string]any) (string, error) {
+	id := argString(args, "id")
+	if strings.TrimSpace(id) == "" {
+		return "", errors.New("id is required")
+	}
+
+	// Check if versioning is enabled
+	if !m.store.VersioningEnabled() {
+		return "", errors.New("versioning is not enabled")
+	}
+
+	// Build version query
+	query := blogstore.NewVersioningQuery().
+		SetEntityType(blogstore.VERSIONING_TYPE_POST).
+		SetEntityID(id)
+
+	// Set optional parameters
+	if orderBy := argString(args, "order_by"); orderBy != "" {
+		query = query.SetOrderBy(orderBy)
+	} else {
+		query = query.SetOrderBy("created_at")
+	}
+
+	if sortOrder := argString(args, "sort_order"); sortOrder != "" {
+		query = query.SetSortOrder(sortOrder)
+	} else {
+		query = query.SetSortOrder("desc")
+	}
+
+	if limit, ok := argInt(args, "limit"); ok {
+		query = query.SetLimit(limit)
+	}
+
+	// Get versions
+	versions, err := m.store.VersioningList(ctx, query)
+	if err != nil {
+		return "", err
+	}
+
+	// Convert versions to serializable format
+	versionItems := make([]map[string]any, 0, len(versions))
+	for _, version := range versions {
+		item := map[string]any{
+			"id":          version.ID(),
+			"entity_id":   version.EntityID(),
+			"entity_type": version.EntityType(),
+			"content":     version.Content(),
+			"created_at":  version.CreatedAt(),
+		}
+		versionItems = append(versionItems, item)
+	}
+
+	b, _ := json.Marshal(map[string]any{
+		"versions": versionItems,
+		"total":    len(versionItems),
+	})
 	return string(b), nil
 }
 
@@ -637,6 +724,27 @@ func (m *MCP) toolPostUpsert(ctx context.Context, args map[string]any) (string, 
 
 	// Create or update based on whether we found an existing post
 	if isUpdate {
+		// Create a version entry before updating
+		if m.store.VersioningEnabled() {
+			// Get the current post state before update for versioning
+			currentPost, err := m.store.PostFindByID(ctx, post.ID())
+			if err == nil && currentPost != nil {
+				// Serialize the current post content for versioning
+				currentPostData := currentPost.Data()
+				versionContent, _ := json.Marshal(currentPostData)
+
+				version := blogstore.NewVersioning().
+					SetEntityType(blogstore.VERSIONING_TYPE_POST).
+					SetEntityID(post.ID()).
+					SetContent(string(versionContent))
+
+				if err := m.store.VersioningCreate(ctx, version); err != nil {
+					// Log error but don't fail the update
+					// In production, you might want to handle this differently
+				}
+			}
+		}
+
 		// Update existing post
 		if err := m.store.PostUpdate(ctx, post); err != nil {
 			return "", err

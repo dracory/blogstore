@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -359,6 +360,16 @@ func Test_MCP_PostUpsert_CreateAndUpdate(t *testing.T) {
 		t.Fatalf("Created post not found")
 	}
 
+	// Check that no versions exist yet (only creation, no updates)
+	versions, err := store.VersioningList(ctx, blogstore.NewVersioningQuery().
+		SetEntityType(blogstore.VERSIONING_TYPE_POST).
+		SetEntityID(postID))
+	if err != nil {
+		t.Fatalf("Failed to list versions: %v", err)
+	}
+	initialVersionCount := len(versions)
+	t.Logf("Initial version count: %d", initialVersionCount)
+
 	// Test 2: Update existing post with upsert (ID provided)
 	updateReq := map[string]any{
 		"jsonrpc": "2.0",
@@ -413,4 +424,340 @@ func Test_MCP_PostUpsert_CreateAndUpdate(t *testing.T) {
 	if updatedPost.Featured() != "yes" {
 		t.Fatalf("Expected post to be featured. Got: %s", updatedPost.Featured())
 	}
+
+	// Check that a new version was created
+	versionsAfterUpdate, err := store.VersioningList(ctx, blogstore.NewVersioningQuery().
+		SetEntityType(blogstore.VERSIONING_TYPE_POST).
+		SetEntityID(postID).
+		SetOrderBy("created_at").
+		SetSortOrder("DESC"))
+	if err != nil {
+		t.Fatalf("Failed to list versions after update: %v", err)
+	}
+
+	expectedVersionCount := initialVersionCount + 1
+	if len(versionsAfterUpdate) != expectedVersionCount {
+		t.Fatalf("Expected %d versions after update, got %d", expectedVersionCount, len(versionsAfterUpdate))
+	}
+
+	// Verify the latest version contains the pre-update state
+	if len(versionsAfterUpdate) > 0 {
+		latestVersion := versionsAfterUpdate[0]
+		versionContent := latestVersion.Content()
+
+		// Parse the version content to verify it contains the original post data
+		var versionedPostData map[string]interface{}
+		if err := json.Unmarshal([]byte(versionContent), &versionedPostData); err != nil {
+			t.Fatalf("Failed to parse version content: %v", err)
+		}
+
+		// Verify the version contains the original title before update
+		if versionedPostData["title"] != "New Upsert Post" {
+			t.Fatalf("Expected version to contain original title 'New Upsert Post', got: %v", versionedPostData["title"])
+		}
+
+		t.Logf("Successfully created version with original title: %v", versionedPostData["title"])
+	}
+}
+
+func Test_MCP_PostUpsert_VersioningIntegration(t *testing.T) {
+	db := initDB(t)
+	defer db.Close()
+
+	store, err := blogstore.NewStore(blogstore.NewStoreOptions{
+		DB:                  db,
+		PostTableName:       "posts",
+		AutomigrateEnabled:  true,
+		VersioningEnabled:   true,
+		VersioningTableName: "versioning_table",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+
+	mcpServer := mcp.NewMCP(store)
+	server := httptest.NewServer(http.HandlerFunc(mcpServer.Handler))
+	defer server.Close()
+
+	ctx := context.Background()
+
+	// Create initial post
+	createReq := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      "1",
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "post_upsert",
+			"arguments": map[string]any{
+				"title":   "Version Test Post",
+				"content": "Initial content",
+				"status":  "draft",
+			},
+		},
+	}
+
+	createBody, _ := json.Marshal(createReq)
+	createResp, err := http.Post(server.URL, "application/json", bytes.NewBuffer(createBody))
+	if err != nil {
+		t.Fatalf("Failed to send create request: %v", err)
+	}
+	createRespBytes, _ := io.ReadAll(createResp.Body)
+	createResp.Body.Close()
+
+	createText := rpcResultText(t, createRespBytes)
+	var createResult map[string]any
+	if err := json.Unmarshal([]byte(createText), &createResult); err != nil {
+		t.Fatalf("Failed to parse create result: %v", err)
+	}
+
+	postID := createResult["id"].(string)
+
+	// Perform multiple updates to create multiple versions
+	updates := []struct {
+		title   string
+		content string
+		status  string
+	}{
+		{"First Update", "First updated content", "draft"},
+		{"Second Update", "Second updated content", "published"},
+		{"Third Update", "Third updated content", "published"},
+	}
+
+	for i, update := range updates {
+		updateReq := map[string]any{
+			"jsonrpc": "2.0",
+			"id":      fmt.Sprintf("%d", i+2),
+			"method":  "tools/call",
+			"params": map[string]any{
+				"name": "post_upsert",
+				"arguments": map[string]any{
+					"id":      postID,
+					"title":   update.title,
+					"content": update.content,
+					"status":  update.status,
+				},
+			},
+		}
+
+		updateBody, _ := json.Marshal(updateReq)
+		updateResp, err := http.Post(server.URL, "application/json", bytes.NewBuffer(updateBody))
+		if err != nil {
+			t.Fatalf("Failed to send update request %d: %v", i+1, err)
+		}
+		updateRespBytes, _ := io.ReadAll(updateResp.Body)
+		updateResp.Body.Close()
+
+		// Verify update succeeded
+		updateText := rpcResultText(t, updateRespBytes)
+		var updateResult map[string]any
+		if err := json.Unmarshal([]byte(updateText), &updateResult); err != nil {
+			t.Fatalf("Failed to parse update result %d: %v", i+1, err)
+		}
+
+		if updateResult["title"].(string) != update.title {
+			t.Fatalf("Update %d: Expected title '%s', got '%s'", i+1, update.title, updateResult["title"])
+		}
+	}
+
+	// Verify we have the correct number of versions
+	versions, err := store.VersioningList(ctx, blogstore.NewVersioningQuery().
+		SetEntityType(blogstore.VERSIONING_TYPE_POST).
+		SetEntityID(postID).
+		SetOrderBy("created_at").
+		SetSortOrder("DESC"))
+	if err != nil {
+		t.Fatalf("Failed to list versions: %v", err)
+	}
+
+	expectedVersionCount := len(updates) // One version per update
+	if len(versions) != expectedVersionCount {
+		t.Fatalf("Expected %d versions, got %d", expectedVersionCount, len(versions))
+	}
+
+	// Verify version history (newest first)
+	for i, version := range versions {
+		if i >= len(updates) {
+			break
+		}
+
+		// The version should contain the state BEFORE the i-th update
+		expectedTitle := "Version Test Post" // Initial title
+		if i > 0 {
+			expectedTitle = updates[i-1].title // Title from previous update
+		}
+
+		versionContent := version.Content()
+		var versionedPostData map[string]interface{}
+		if err := json.Unmarshal([]byte(versionContent), &versionedPostData); err != nil {
+			t.Fatalf("Failed to parse version %d content: %v", i, err)
+		}
+
+		if versionedPostData["title"] != expectedTitle {
+			t.Fatalf("Version %d: Expected title '%s', got '%v'", i, expectedTitle, versionedPostData["title"])
+		}
+
+		t.Logf("Version %d: Correctly captured title '%s'", i, versionedPostData["title"])
+	}
+
+	t.Logf("Successfully verified %d versions for post %s", len(versions), postID)
+}
+
+func Test_MCP_PostVersions(t *testing.T) {
+	db := initDB(t)
+	defer db.Close()
+
+	store, err := blogstore.NewStore(blogstore.NewStoreOptions{
+		DB:                  db,
+		PostTableName:       "posts",
+		AutomigrateEnabled:  true,
+		VersioningEnabled:   true,
+		VersioningTableName: "versioning_table",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+
+	mcpServer := mcp.NewMCP(store)
+	server := httptest.NewServer(http.HandlerFunc(mcpServer.Handler))
+	defer server.Close()
+
+	// Create initial post
+	createReq := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      "1",
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "post_upsert",
+			"arguments": map[string]any{
+				"title":   "Versions Test Post",
+				"content": "Initial content",
+				"status":  "draft",
+			},
+		},
+	}
+
+	createBody, _ := json.Marshal(createReq)
+	createResp, err := http.Post(server.URL, "application/json", bytes.NewBuffer(createBody))
+	if err != nil {
+		t.Fatalf("Failed to send create request: %v", err)
+	}
+	createRespBytes, _ := io.ReadAll(createResp.Body)
+	createResp.Body.Close()
+
+	createText := rpcResultText(t, createRespBytes)
+	var createResult map[string]any
+	if err := json.Unmarshal([]byte(createText), &createResult); err != nil {
+		t.Fatalf("Failed to parse create result: %v", err)
+	}
+
+	postID := createResult["id"].(string)
+
+	// Perform a few updates to create versions
+	for i := 1; i <= 3; i++ {
+		updateReq := map[string]any{
+			"jsonrpc": "2.0",
+			"id":      fmt.Sprintf("%d", i+1),
+			"method":  "tools/call",
+			"params": map[string]any{
+				"name": "post_upsert",
+				"arguments": map[string]any{
+					"id":      postID,
+					"title":   fmt.Sprintf("Update %d", i),
+					"content": fmt.Sprintf("Content %d", i),
+				},
+			},
+		}
+
+		updateBody, _ := json.Marshal(updateReq)
+		updateResp, err := http.Post(server.URL, "application/json", bytes.NewBuffer(updateBody))
+		if err != nil {
+			t.Fatalf("Failed to send update request %d: %v", i, err)
+		}
+		updateResp.Body.Close()
+	}
+
+	// Test post_versions tool
+	versionsReq := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      "5",
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "post_versions",
+			"arguments": map[string]any{
+				"id": postID,
+			},
+		},
+	}
+
+	versionsBody, _ := json.Marshal(versionsReq)
+	versionsResp, err := http.Post(server.URL, "application/json", bytes.NewBuffer(versionsBody))
+	if err != nil {
+		t.Fatalf("Failed to send versions request: %v", err)
+	}
+	versionsRespBytes, _ := io.ReadAll(versionsResp.Body)
+	versionsResp.Body.Close()
+
+	versionsText := rpcResultText(t, versionsRespBytes)
+	var versionsResult map[string]any
+	if err := json.Unmarshal([]byte(versionsText), &versionsResult); err != nil {
+		t.Fatalf("Failed to parse versions result: %v", err)
+	}
+
+	// Verify versions response
+	if versionsResult["total"].(float64) != 3 {
+		t.Fatalf("Expected 3 versions, got: %v", versionsResult["total"])
+	}
+
+	versions, ok := versionsResult["versions"].([]any)
+	if !ok {
+		t.Fatalf("Expected versions array, got: %T", versionsResult["versions"])
+	}
+
+	if len(versions) != 3 {
+		t.Fatalf("Expected 3 version items, got: %d", len(versions))
+	}
+
+	// Verify version structure
+	for i, version := range versions {
+		versionMap, ok := version.(map[string]any)
+		if !ok {
+			t.Fatalf("Version %d should be a map, got: %T", i, version)
+		}
+
+		// Check required fields
+		requiredFields := []string{"id", "entity_id", "entity_type", "content", "created_at"}
+		for _, field := range requiredFields {
+			if _, exists := versionMap[field]; !exists {
+				t.Fatalf("Version %d missing required field: %s", i, field)
+			}
+		}
+
+		// Verify entity type and ID
+		if versionMap["entity_type"] != "post" {
+			t.Fatalf("Version %d: Expected entity_type 'post', got: %v", i, versionMap["entity_type"])
+		}
+
+		if versionMap["entity_id"] != postID {
+			t.Fatalf("Version %d: Expected entity_id '%s', got: %v", i, postID, versionMap["entity_id"])
+		}
+
+		// Verify content is valid JSON (post data)
+		content, ok := versionMap["content"].(string)
+		if !ok {
+			t.Fatalf("Version %d: Content should be a string, got: %T", i, versionMap["content"])
+		}
+
+		var postData map[string]interface{}
+		if err := json.Unmarshal([]byte(content), &postData); err != nil {
+			t.Fatalf("Version %d: Content should be valid JSON, got error: %v", i, err)
+		}
+
+		if postData["title"] == nil {
+			t.Fatalf("Version %d: Content should contain title field", i)
+		}
+
+		t.Logf("Version %d: Validated with title '%v'", i, postData["title"])
+	}
+
+	t.Logf("Successfully validated post_versions tool for post %s", postID)
 }
