@@ -724,27 +724,6 @@ func (m *MCP) toolPostUpsert(ctx context.Context, args map[string]any) (string, 
 
 	// Create or update based on whether we found an existing post
 	if isUpdate {
-		// Create a version entry before updating
-		if m.store.VersioningEnabled() {
-			// Get the current post state before update for versioning
-			currentPost, err := m.store.PostFindByID(ctx, post.ID())
-			if err == nil && currentPost != nil {
-				// Serialize the current post content for versioning
-				currentPostData := currentPost.Data()
-				versionContent, _ := json.Marshal(currentPostData)
-
-				version := blogstore.NewVersioning().
-					SetEntityType(blogstore.VERSIONING_TYPE_POST).
-					SetEntityID(post.ID()).
-					SetContent(string(versionContent))
-
-				if err := m.store.VersioningCreate(ctx, version); err != nil {
-					// Log error but don't fail the update
-					// In production, you might want to handle this differently
-				}
-			}
-		}
-
 		// Update existing post
 		if err := m.store.PostUpdate(ctx, post); err != nil {
 			return "", err

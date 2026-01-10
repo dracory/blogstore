@@ -52,13 +52,6 @@ func TestStoreVersioningCreateAndList(t *testing.T) {
 		t.Fatal("unexpected error:", err)
 	}
 
-	if err := store.VersioningCreate(context.Background(), NewVersioning().
-		SetEntityType(VERSIONING_TYPE_POST).
-		SetEntityID(post.ID()).
-		SetContent(content)); err != nil {
-		t.Fatal("unexpected error:", err)
-	}
-
 	list, err := store.VersioningList(context.Background(), NewVersioningQuery().
 		SetEntityType(VERSIONING_TYPE_POST).
 		SetEntityID(post.ID()).

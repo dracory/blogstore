@@ -368,6 +368,9 @@ func Test_MCP_PostUpsert_CreateAndUpdate(t *testing.T) {
 		t.Fatalf("Failed to list versions: %v", err)
 	}
 	initialVersionCount := len(versions)
+	if initialVersionCount != 1 {
+		t.Fatalf("Expected 1 version after create, got %d", initialVersionCount)
+	}
 	t.Logf("Initial version count: %d", initialVersionCount)
 
 	// Test 2: Update existing post with upsert (ID provided)
@@ -440,23 +443,24 @@ func Test_MCP_PostUpsert_CreateAndUpdate(t *testing.T) {
 		t.Fatalf("Expected %d versions after update, got %d", expectedVersionCount, len(versionsAfterUpdate))
 	}
 
-	// Verify the latest version contains the pre-update state
+	// Verify the latest version contains the post-update state
 	if len(versionsAfterUpdate) > 0 {
-		latestVersion := versionsAfterUpdate[0]
-		versionContent := latestVersion.Content()
-
-		// Parse the version content to verify it contains the original post data
-		var versionedPostData map[string]interface{}
-		if err := json.Unmarshal([]byte(versionContent), &versionedPostData); err != nil {
-			t.Fatalf("Failed to parse version content: %v", err)
+		foundUpdated := false
+		for _, v := range versionsAfterUpdate {
+			versionContent := v.Content()
+			var versionedPostData map[string]interface{}
+			if err := json.Unmarshal([]byte(versionContent), &versionedPostData); err != nil {
+				t.Fatalf("Failed to parse version content: %v", err)
+			}
+			if versionedPostData["title"] == "Updated Upsert Post" {
+				foundUpdated = true
+				break
+			}
 		}
 
-		// Verify the version contains the original title before update
-		if versionedPostData["title"] != "New Upsert Post" {
-			t.Fatalf("Expected version to contain original title 'New Upsert Post', got: %v", versionedPostData["title"])
+		if !foundUpdated {
+			t.Fatalf("Expected versions to contain updated title 'Updated Upsert Post'")
 		}
-
-		t.Logf("Successfully created version with original title: %v", versionedPostData["title"])
 	}
 }
 
@@ -569,34 +573,37 @@ func Test_MCP_PostUpsert_VersioningIntegration(t *testing.T) {
 		t.Fatalf("Failed to list versions: %v", err)
 	}
 
-	expectedVersionCount := len(updates) // One version per update
+	expectedVersionCount := 1 + len(updates) // One on create + one per update
 	if len(versions) != expectedVersionCount {
 		t.Fatalf("Expected %d versions, got %d", expectedVersionCount, len(versions))
 	}
 
-	// Verify version history (newest first)
+	// Verify version history contains the expected titles. Do not assume ordering
+	// because multiple versions may share the same created_at value.
+	expectedTitles := map[string]bool{
+		"Version Test Post": false,
+		"First Update":      false,
+		"Second Update":     false,
+		"Third Update":      false,
+	}
+
 	for i, version := range versions {
-		if i >= len(updates) {
-			break
-		}
-
-		// The version should contain the state BEFORE the i-th update
-		expectedTitle := "Version Test Post" // Initial title
-		if i > 0 {
-			expectedTitle = updates[i-1].title // Title from previous update
-		}
-
 		versionContent := version.Content()
 		var versionedPostData map[string]interface{}
 		if err := json.Unmarshal([]byte(versionContent), &versionedPostData); err != nil {
 			t.Fatalf("Failed to parse version %d content: %v", i, err)
 		}
-
-		if versionedPostData["title"] != expectedTitle {
-			t.Fatalf("Version %d: Expected title '%s', got '%v'", i, expectedTitle, versionedPostData["title"])
+		if title, ok := versionedPostData["title"].(string); ok {
+			if _, exists := expectedTitles[title]; exists {
+				expectedTitles[title] = true
+			}
 		}
+	}
 
-		t.Logf("Version %d: Correctly captured title '%s'", i, versionedPostData["title"])
+	for title, found := range expectedTitles {
+		if !found {
+			t.Fatalf("Expected versions to contain title '%s'", title)
+		}
 	}
 
 	t.Logf("Successfully verified %d versions for post %s", len(versions), postID)
@@ -704,8 +711,8 @@ func Test_MCP_PostVersions(t *testing.T) {
 	}
 
 	// Verify versions response
-	if versionsResult["total"].(float64) != 3 {
-		t.Fatalf("Expected 3 versions, got: %v", versionsResult["total"])
+	if versionsResult["total"].(float64) != 4 {
+		t.Fatalf("Expected 4 versions, got: %v", versionsResult["total"])
 	}
 
 	versions, ok := versionsResult["versions"].([]any)
@@ -713,8 +720,8 @@ func Test_MCP_PostVersions(t *testing.T) {
 		t.Fatalf("Expected versions array, got: %T", versionsResult["versions"])
 	}
 
-	if len(versions) != 3 {
-		t.Fatalf("Expected 3 version items, got: %d", len(versions))
+	if len(versions) != 4 {
+		t.Fatalf("Expected 4 version items, got: %d", len(versions))
 	}
 
 	// Verify version structure

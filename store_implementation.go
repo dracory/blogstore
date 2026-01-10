@@ -89,6 +89,9 @@ func (store *store) PostCreate(ctx context.Context, post *Post) error {
 	}
 
 	post.MarkAsNotDirty()
+	if err := store.versioningTrackEntity(ctx, VERSIONING_TYPE_POST, post.ID(), post); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -319,6 +322,9 @@ func (st *store) PostUpdate(ctx context.Context, post *Post) error {
 	_, err := st.db.ExecContext(ctx, sqlStr, params...)
 
 	post.MarkAsNotDirty()
+	if err2 := st.versioningTrackEntity(ctx, VERSIONING_TYPE_POST, post.ID(), post); err2 != nil {
+		return err2
+	}
 
 	return err
 }
