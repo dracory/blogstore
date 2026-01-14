@@ -382,18 +382,18 @@ func (st *store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 		if options.Offset > 0 {
 			q = q.Offset(uint(options.Offset))
 		}
-	}
 
-	sortOrder := "desc"
-	if options.SortOrder != "" {
-		sortOrder = options.SortOrder
-	}
+		sortOrder := "desc"
+		if options.SortOrder != "" {
+			sortOrder = options.SortOrder
+		}
 
-	if options.OrderBy != "" {
-		if strings.EqualFold(sortOrder, sb.ASC) {
-			q = q.Order(goqu.I(options.OrderBy).Asc())
-		} else {
-			q = q.Order(goqu.I(options.OrderBy).Desc())
+		if options.OrderBy != "" {
+			if strings.EqualFold(sortOrder, sb.ASC) {
+				q = q.Order(goqu.I(options.OrderBy).Asc())
+			} else {
+				q = q.Order(goqu.I(options.OrderBy).Desc())
+			}
 		}
 	}
 
