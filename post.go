@@ -123,6 +123,19 @@ func (o *Post) MarshalToVersioning() (string, error) {
 	return string(b), nil
 }
 
+func (o *Post) UnmarshalFromVersioning(content string) error {
+	versionedData := map[string]string{}
+	if err := json.Unmarshal([]byte(content), &versionedData); err != nil {
+		return err
+	}
+
+	for k, v := range versionedData {
+		o.Set(k, v)
+	}
+
+	return nil
+}
+
 // ============================ SETTERS AND GETTERS ============================
 
 func (o *Post) AddMetas(metas map[string]string) error {
