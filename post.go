@@ -130,8 +130,17 @@ func (o *Post) UnmarshalFromVersioning(content string) error {
 	}
 
 	for k, v := range versionedData {
+		// Skip timestamp fields that shouldn't be restored from versioning
+		if k == COLUMN_CREATED_AT ||
+			k == COLUMN_UPDATED_AT ||
+			k == COLUMN_SOFT_DELETED_AT {
+			continue
+		}
 		o.Set(k, v)
 	}
+
+	// Update the updated_at timestamp to current time when restoring
+	o.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
 	return nil
 }
