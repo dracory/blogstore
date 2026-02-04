@@ -8,12 +8,12 @@ require (
 	github.com/dracory/dataobject v1.6.0
 	github.com/dracory/sb v0.15.0
 	github.com/dracory/str v0.17.0
-	github.com/dracory/uid v1.8.0
+	github.com/dracory/uid v1.9.0
 	github.com/dracory/versionstore v0.5.0
-	github.com/dromara/carbon/v2 v2.6.15
+	github.com/dromara/carbon/v2 v2.6.16
 	github.com/samber/lo v1.52.0
 	github.com/stretchr/testify v1.11.1
-	modernc.org/sqlite v1.43.0
+	modernc.org/sqlite v1.44.3
 )
 
 require (
@@ -26,12 +26,12 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	golang.org/x/crypto v0.46.0 // indirect
-	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 // indirect
+	golang.org/x/crypto v0.47.0 // indirect
+	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.67.4 // indirect
+	modernc.org/libc v1.67.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
