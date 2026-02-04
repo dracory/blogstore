@@ -7,7 +7,6 @@ import (
 	"github.com/dracory/dataobject"
 	"github.com/dracory/sb"
 	"github.com/dracory/str"
-	"github.com/dracory/uid"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
 )
@@ -16,7 +15,7 @@ import (
 
 func NewPost() *Post {
 	o := &Post{}
-	o.SetID(uid.HumanUid()).
+	o.SetID(GenerateShortID()).
 		SetAuthorID("").
 		SetCanonicalURL("").
 		SetContent("").

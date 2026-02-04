@@ -387,7 +387,15 @@ func postToMap(post *blogstore.Post) map[string]string {
 	if post == nil {
 		return map[string]string{}
 	}
-	return post.Data()
+
+	data := post.Data()
+
+	// Shorten the ID for API response
+	if id, ok := data["id"]; ok {
+		data["id"] = blogstore.ShortenID(id)
+	}
+
+	return data
 }
 
 // contentTypeToEditor converts content_type to editor field

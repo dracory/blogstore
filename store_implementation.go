@@ -182,8 +182,12 @@ func (store *store) PostFindByID(ctx context.Context, id string) (*Post, error) 
 		return nil, errors.New("post id is empty")
 	}
 
+	// Normalize ID
+	normalizedID := NormalizeID(id)
+
+	// Try direct lookup first
 	list, err := store.PostList(ctx, PostQueryOptions{
-		ID:    id,
+		ID:    normalizedID,
 		Limit: 1,
 	})
 
@@ -193,6 +197,25 @@ func (store *store) PostFindByID(ctx context.Context, id string) (*Post, error) 
 
 	if len(list) > 0 {
 		return &list[0], nil
+	}
+
+	// If not found and ID looks shortened, try unshortening
+	if IsShortID(normalizedID) {
+		unshortened, err := UnshortenID(normalizedID)
+		if err == nil && unshortened != normalizedID {
+			list, err = store.PostList(ctx, PostQueryOptions{
+				ID:    unshortened,
+				Limit: 1,
+			})
+
+			if err != nil {
+				return nil, err
+			}
+
+			if len(list) > 0 {
+				return &list[0], nil
+			}
+		}
 	}
 
 	return nil, nil
