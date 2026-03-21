@@ -32,9 +32,12 @@ type store struct {
 
 // AutoMigrate auto migrate
 func (store *store) AutoMigrate() error {
-	sql := store.sqlCreateTable()
+	sql, err := store.sqlCreateTable()
+	if err != nil {
+		return err
+	}
 
-	_, err := store.db.Exec(sql)
+	_, err = store.db.Exec(sql)
 	if err != nil {
 		log.Println(err)
 		return err
