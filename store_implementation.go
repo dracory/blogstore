@@ -403,13 +403,14 @@ func (st *store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 			// SQLite: json_extract(metas, '$.key')
 			// MySQL/PostgreSQL: metas->>'$.key' or json_extract(metas, '$.key')
 			var jsonExpr goqu.Expression
-			if st.dbDriverName == "sqlite3" || st.dbDriverName == "sqlite" {
+			switch st.dbDriverName {
+			case "sqlite3", "sqlite":
 				// SQLite json_extract syntax
-				jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", ?)", "$."+key).Eq(value)
-			} else if st.dbDriverName == "mysql" {
+				jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", ?)", "$.."+key).Eq(value)
+			case "mysql":
 				// MySQL JSON_EXTRACT syntax
-				jsonExpr = goqu.L("JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", ?))", "$."+key).Eq(value)
-			} else {
+				jsonExpr = goqu.L("JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", ?))", "$.."+key).Eq(value)
+			default:
 				// PostgreSQL and others - use generic JSON extraction
 				jsonExpr = goqu.L("("+COLUMN_METAS+"->>?)::text", key).Eq(value)
 			}
