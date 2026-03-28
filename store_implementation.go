@@ -396,8 +396,25 @@ func (st *store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 		q = q.Where(goqu.C(COLUMN_CREATED_AT).Lt(options.CreatedAtLessThan))
 	}
 
-	if len(options.StatusIn) > 0 {
-		q = q.Where(goqu.C(COLUMN_STATUS).In(options.StatusIn))
+	// Handle MetaContains filtering - checks if meta JSON contains key-value pair
+	if len(options.MetaContains) > 0 {
+		for key, value := range options.MetaContains {
+			// Use JSON extraction for cross-database compatibility
+			// SQLite: json_extract(metas, '$.key')
+			// MySQL/PostgreSQL: metas->>'$.key' or json_extract(metas, '$.key')
+			var jsonExpr goqu.Expression
+			if st.dbDriverName == "sqlite3" || st.dbDriverName == "sqlite" {
+				// SQLite json_extract syntax
+				jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", ?)", "$."+key).Eq(value)
+			} else if st.dbDriverName == "mysql" {
+				// MySQL JSON_EXTRACT syntax
+				jsonExpr = goqu.L("JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", ?))", "$."+key).Eq(value)
+			} else {
+				// PostgreSQL and others - use generic JSON extraction
+				jsonExpr = goqu.L("("+COLUMN_METAS+"->>?)::text", key).Eq(value)
+			}
+			q = q.Where(jsonExpr)
+		}
 	}
 
 	if !options.CountOnly {
