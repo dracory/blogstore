@@ -236,7 +236,7 @@ func (m *MCP) handleInitialized(w http.ResponseWriter, _ context.Context) {
 }
 
 func (m *MCP) handleToolsList(w http.ResponseWriter, _ context.Context, id any) {
-	tools := []map[string]any{
+	baseTools := []map[string]any{
 		{
 			"name":        "blog_schema",
 			"description": "Get schema information about blog entities and their field constraints",
@@ -322,6 +322,10 @@ func (m *MCP) handleToolsList(w http.ResponseWriter, _ context.Context, id any) 
 		},
 	}
 
+	// Add taxonomy tools
+	taxonomyTools := m.taxonomyTools()
+	tools := append(baseTools, taxonomyTools...)
+
 	result := map[string]any{"tools": tools}
 	writeJSON(w, http.StatusOK, jsonRPCResultResponse(id, result))
 }
@@ -378,6 +382,9 @@ func (m *MCP) dispatchTool(ctx context.Context, toolName string, args map[string
 		return m.toolPostVersions(ctx, args)
 	case "post_delete":
 		return m.toolPostDelete(ctx, args)
+	case "taxonomy_list", "taxonomy_create", "term_list", "term_create",
+		"post_set_terms", "post_add_term", "post_get_terms":
+		return m.taxonomyToolDispatch(ctx, toolName, args)
 	default:
 		return "", errors.New("unknown tool")
 	}

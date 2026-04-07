@@ -438,6 +438,65 @@ func (o *postImplementation) IsDirty() bool {
 	return o.DataObject.IsDirty()
 }
 
+// ============================ TAXONOMY METHODS ============================
+
+func (o *postImplementation) TermIDs(taxonomySlug string) []string {
+	metas, err := o.GetMetas()
+	if err != nil {
+		return []string{}
+	}
+
+	key := "term_ids_" + taxonomySlug
+	jsonStr := lo.ValueOr(metas, key, "")
+	if jsonStr == "" {
+		return []string{}
+	}
+
+	var ids []string
+	if err := json.Unmarshal([]byte(jsonStr), &ids); err != nil {
+		return []string{}
+	}
+
+	return ids
+}
+
+func (o *postImplementation) SetTermIDs(taxonomySlug string, termIDs []string) PostInterface {
+	metas, err := o.GetMetas()
+	if err != nil {
+		return o
+	}
+
+	key := "term_ids_" + taxonomySlug
+	if len(termIDs) == 0 {
+		delete(metas, key)
+	} else {
+		jsonBytes, err := json.Marshal(termIDs)
+		if err != nil {
+			return o
+		}
+		metas[key] = string(jsonBytes)
+	}
+
+	o.SetMetas(metas)
+	return o
+}
+
+func (o *postImplementation) CategoryIDs() []string {
+	return o.TermIDs(TAXONOMY_CATEGORY)
+}
+
+func (o *postImplementation) SetCategoryIDs(ids []string) PostInterface {
+	return o.SetTermIDs(TAXONOMY_CATEGORY, ids)
+}
+
+func (o *postImplementation) TagIDs() []string {
+	return o.TermIDs(TAXONOMY_TAG)
+}
+
+func (o *postImplementation) SetTagIDs(ids []string) PostInterface {
+	return o.SetTermIDs(TAXONOMY_TAG, ids)
+}
+
 func BlogNoImageUrl() string {
 	// return links.NewWebsiteLinks().Cdn("/blogs/default_blog.jpg", map[string]string{})
 	//return config.MediaUrl + "/blogs/default_blog.png"

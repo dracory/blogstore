@@ -19,12 +19,15 @@ import (
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
 
 type storeImplementation struct {
-	postTableName      string
-	db                 *sql.DB
-	dbDriverName       string
-	timeoutSeconds     int64
-	automigrateEnabled bool
-	debugEnabled       bool
+	postTableName         string
+	taxonomyTableName     string
+	termTableName         string
+	termRelationTableName string
+	db                    *sql.DB
+	dbDriverName          string
+	timeoutSeconds        int64
+	automigrateEnabled    bool
+	debugEnabled          bool
 
 	versioningEnabled bool
 	versioningStore   versionstore.StoreInterface
@@ -32,7 +35,44 @@ type storeImplementation struct {
 
 // AutoMigrate auto migrate
 func (store *storeImplementation) AutoMigrate() error {
+	// Create main post table
 	sql, err := store.sqlCreateTable()
+	if err != nil {
+		return err
+	}
+
+	_, err = store.db.Exec(sql)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	// Create taxonomy table
+	sql, err = store.sqlCreateTaxonomyTable()
+	if err != nil {
+		return err
+	}
+
+	_, err = store.db.Exec(sql)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	// Create term table
+	sql, err = store.sqlCreateTermTable()
+	if err != nil {
+		return err
+	}
+
+	_, err = store.db.Exec(sql)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	// Create term relation table
+	sql, err = store.sqlCreateTermRelationTable()
 	if err != nil {
 		return err
 	}

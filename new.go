@@ -10,12 +10,15 @@ import (
 
 // NewStoreOptions define the options for creating a new block store
 type NewStoreOptions struct {
-	PostTableName      string
-	DB                 *sql.DB
-	DbDriverName       string
-	TimeoutSeconds     int64
-	AutomigrateEnabled bool
-	DebugEnabled       bool
+	PostTableName         string
+	TaxonomyTableName     string
+	TermTableName         string
+	TermRelationTableName string
+	DB                    *sql.DB
+	DbDriverName          string
+	TimeoutSeconds        int64
+	AutomigrateEnabled    bool
+	DebugEnabled          bool
 
 	VersioningEnabled   bool
 	VersioningTableName string
@@ -25,6 +28,18 @@ type NewStoreOptions struct {
 func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 	if opts.PostTableName == "" {
 		return nil, errors.New("blog store: PostTableName is required")
+	}
+
+	if opts.TaxonomyTableName == "" {
+		opts.TaxonomyTableName = "blog_taxonomy"
+	}
+
+	if opts.TermTableName == "" {
+		opts.TermTableName = "blog_term"
+	}
+
+	if opts.TermRelationTableName == "" {
+		opts.TermRelationTableName = "blog_term_rel"
 	}
 
 	if opts.DB == nil {
@@ -57,13 +72,16 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 	}
 
 	store := &storeImplementation{
-		postTableName:      opts.PostTableName,
-		automigrateEnabled: opts.AutomigrateEnabled,
-		db:                 opts.DB,
-		dbDriverName:       opts.DbDriverName,
-		debugEnabled:       opts.DebugEnabled,
-		versioningEnabled:  opts.VersioningEnabled,
-		versioningStore:    versionStore,
+		postTableName:         opts.PostTableName,
+		taxonomyTableName:     opts.TaxonomyTableName,
+		termTableName:         opts.TermTableName,
+		termRelationTableName: opts.TermRelationTableName,
+		automigrateEnabled:    opts.AutomigrateEnabled,
+		db:                    opts.DB,
+		dbDriverName:          opts.DbDriverName,
+		debugEnabled:          opts.DebugEnabled,
+		versioningEnabled:     opts.VersioningEnabled,
+		versioningStore:       versionStore,
 	}
 
 	store.timeoutSeconds = 2 * 60 * 60 // 2 hours

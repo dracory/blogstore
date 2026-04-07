@@ -104,6 +104,16 @@ type PostInterface interface {
 	MarshalToVersioning() (string, error)
 	UnmarshalFromVersioning(content string) error
 
+	// Taxonomy methods
+	TermIDs(taxonomySlug string) []string
+	SetTermIDs(taxonomySlug string, termIDs []string) PostInterface
+
+	// Convenience helpers
+	CategoryIDs() []string
+	SetCategoryIDs(ids []string) PostInterface
+	TagIDs() []string
+	SetTagIDs(ids []string) PostInterface
+
 	// DataObject methods (from embedded dataobject.DataObject)
 	GetData() map[string]string
 	GetDataChanged() map[string]string

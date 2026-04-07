@@ -27,4 +27,32 @@ type StoreInterface interface {
 	VersioningSoftDelete(ctx context.Context, versioning VersioningInterface) error
 	VersioningSoftDeleteByID(ctx context.Context, id string) error
 	VersioningUpdate(ctx context.Context, versioning VersioningInterface) error
+
+	// Taxonomy management
+	TaxonomyCount(ctx context.Context, options TaxonomyQueryOptions) (int64, error)
+	TaxonomyCreate(ctx context.Context, taxonomy TaxonomyInterface) error
+	TaxonomyDelete(ctx context.Context, taxonomy TaxonomyInterface) error
+	TaxonomyFindByID(ctx context.Context, id string) (TaxonomyInterface, error)
+	TaxonomyFindBySlug(ctx context.Context, slug string) (TaxonomyInterface, error)
+	TaxonomyList(ctx context.Context, options TaxonomyQueryOptions) ([]TaxonomyInterface, error)
+	TaxonomyUpdate(ctx context.Context, taxonomy TaxonomyInterface) error
+
+	// Term management
+	TermCount(ctx context.Context, options TermQueryOptions) (int64, error)
+	TermCreate(ctx context.Context, term TermInterface) error
+	TermDelete(ctx context.Context, term TermInterface) error
+	TermFindByID(ctx context.Context, id string) (TermInterface, error)
+	TermFindBySlug(ctx context.Context, taxonomySlug, termSlug string) (TermInterface, error)
+	TermList(ctx context.Context, options TermQueryOptions) ([]TermInterface, error)
+	TermUpdate(ctx context.Context, term TermInterface) error
+
+	// Post-term relationships
+	PostTermAdd(ctx context.Context, postID string, termID string, sequence int) error
+	PostTermRemove(ctx context.Context, postID string, termID string) error
+	PostTerms(ctx context.Context, postID string, taxonomySlug string) ([]TermInterface, error)
+	PostSetTerms(ctx context.Context, postID string, taxonomySlug string, termIDs []string) error
+
+	// Utility queries
+	TermIncrementCount(ctx context.Context, termID string) error
+	TermDecrementCount(ctx context.Context, termID string) error
 }
