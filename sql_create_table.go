@@ -172,6 +172,10 @@ func (st *storeImplementation) sqlCreateTermTable() (string, error) {
 			Type: sb.COLUMN_TYPE_INTEGER,
 		}).
 		Column(sb.Column{
+			Name: COLUMN_SEQUENCE,
+			Type: sb.COLUMN_TYPE_INTEGER,
+		}).
+		Column(sb.Column{
 			Name: COLUMN_CREATED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).
@@ -205,7 +209,7 @@ func (st *storeImplementation) sqlCreateTermRelationTable() (string, error) {
 			Length: 40,
 		}).
 		Column(sb.Column{
-			Name: COLUMN_TERM_SEQUENCE,
+			Name: COLUMN_SEQUENCE,
 			Type: sb.COLUMN_TYPE_INTEGER,
 		}).
 		Column(sb.Column{

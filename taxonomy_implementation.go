@@ -153,6 +153,7 @@ func NewTerm() TermInterface {
 	o.SetID(GenerateShortID()).
 		SetTaxonomyID("").
 		SetParentID("").
+		SetSequence(0).
 		SetName("").
 		SetSlug("").
 		SetDescription("").
@@ -197,6 +198,23 @@ func (o *termImplementation) GetParentID() string {
 
 func (o *termImplementation) SetParentID(parentID string) TermInterface {
 	o.Set(COLUMN_PARENT_ID, parentID)
+	return o
+}
+
+func (o *termImplementation) GetSequence() int {
+	seqStr := o.Get(COLUMN_SEQUENCE)
+	if seqStr == "" {
+		return 0
+	}
+	var seq int
+	if _, err := parseInt(seqStr, &seq); err != nil {
+		return 0
+	}
+	return seq
+}
+
+func (o *termImplementation) SetSequence(sequence int) TermInterface {
+	o.Set(COLUMN_SEQUENCE, intToString(sequence))
 	return o
 }
 
@@ -375,7 +393,7 @@ func (o *termRelationImplementation) SetTermID(termID string) TermRelationInterf
 }
 
 func (o *termRelationImplementation) GetSequence() int {
-	seqStr := o.Get(COLUMN_TERM_SEQUENCE)
+	seqStr := o.Get(COLUMN_SEQUENCE)
 	if seqStr == "" {
 		return 0
 	}
@@ -387,7 +405,7 @@ func (o *termRelationImplementation) GetSequence() int {
 }
 
 func (o *termRelationImplementation) SetSequence(sequence int) TermRelationInterface {
-	o.Set(COLUMN_TERM_SEQUENCE, intToString(sequence))
+	o.Set(COLUMN_SEQUENCE, intToString(sequence))
 	return o
 }
 
@@ -475,15 +493,20 @@ var sb_NULL_DATETIME = "1970-01-01 00:00:00"
 func parseInt(s string, v *int) (int, error) {
 	// Simple parse implementation
 	result := 0
+	negative := false
 	for i := 0; i < len(s); i++ {
 		c := s[i]
 		if c < '0' || c > '9' {
 			if i == 0 && c == '-' {
+				negative = true
 				continue
 			}
 			return 0, nil
 		}
 		result = result*10 + int(c-'0')
+	}
+	if negative {
+		result = -result
 	}
 	*v = result
 	return result, nil

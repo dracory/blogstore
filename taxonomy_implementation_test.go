@@ -86,6 +86,10 @@ func TestNewTermDefaults(t *testing.T) {
 		t.Errorf("NewTerm() parent_id = %q, want empty string", term.GetParentID())
 	}
 
+	if term.GetSequence() != 0 {
+		t.Errorf("NewTerm() sequence = %d, want 0", term.GetSequence())
+	}
+
 	if term.GetName() != "" {
 		t.Errorf("NewTerm() name = %q, want empty string", term.GetName())
 	}
@@ -112,6 +116,7 @@ func TestTermSetters(t *testing.T) {
 
 	term.SetTaxonomyID("taxonomy-123").
 		SetParentID("parent-456").
+		SetSequence(5).
 		SetName("Technology").
 		SetSlug("tech").
 		SetDescription("Tech posts").
@@ -123,6 +128,10 @@ func TestTermSetters(t *testing.T) {
 
 	if term.GetParentID() != "parent-456" {
 		t.Errorf("GetParentID() = %q, want %q", term.GetParentID(), "parent-456")
+	}
+
+	if term.GetSequence() != 5 {
+		t.Errorf("GetSequence() = %d, want %d", term.GetSequence(), 5)
 	}
 
 	if term.GetName() != "Technology" {
@@ -149,6 +158,119 @@ func TestTermSlugNormalization(t *testing.T) {
 	// Slug should be normalized
 	if term.GetSlug() != "my-term-name" {
 		t.Errorf("GetSlug() = %q, want %q", term.GetSlug(), "my-term-name")
+	}
+}
+
+func TestTermSequenceManipulation(t *testing.T) {
+	term := NewTerm()
+
+	// Test setting sequence
+	term.SetSequence(10)
+	if term.GetSequence() != 10 {
+		t.Errorf("GetSequence() = %d, want %d", term.GetSequence(), 10)
+	}
+
+	// Test setting to 0
+	term.SetSequence(0)
+	if term.GetSequence() != 0 {
+		t.Errorf("GetSequence() = %d, want %d", term.GetSequence(), 0)
+	}
+
+	// Test negative sequence
+	term.SetSequence(-5)
+	if term.GetSequence() != -5 {
+		t.Errorf("GetSequence() = %d, want %d", term.GetSequence(), -5)
+	}
+}
+
+func TestStoreTermHierarchyWithSequence(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		DB:                 db,
+		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
+	})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	ctx := context.Background()
+
+	// Create taxonomy
+	taxonomy := NewTaxonomy().SetName("Categories").SetSlug("category")
+	if err := store.TaxonomyCreate(ctx, taxonomy); err != nil {
+		t.Fatalf("TaxonomyCreate() error = %v, want nil", err)
+	}
+
+	// Create parent category
+	parent := NewTerm().
+		SetTaxonomyID(taxonomy.GetID()).
+		SetName("Electronics").
+		SetSlug("electronics")
+	if err := store.TermCreate(ctx, parent); err != nil {
+		t.Fatalf("TermCreate() error = %v, want nil", err)
+	}
+
+	// Create subcategories with sequences
+	sub1 := NewTerm().
+		SetTaxonomyID(taxonomy.GetID()).
+		SetParentID(parent.GetID()).
+		SetSequence(3).
+		SetName("Phones").
+		SetSlug("phones")
+	sub2 := NewTerm().
+		SetTaxonomyID(taxonomy.GetID()).
+		SetParentID(parent.GetID()).
+		SetSequence(1).
+		SetName("Laptops").
+		SetSlug("laptops")
+	sub3 := NewTerm().
+		SetTaxonomyID(taxonomy.GetID()).
+		SetParentID(parent.GetID()).
+		SetSequence(2).
+		SetName("Tablets").
+		SetSlug("tablets")
+
+	if err := store.TermCreate(ctx, sub1); err != nil {
+		t.Fatalf("TermCreate() error = %v, want nil", err)
+	}
+	if err := store.TermCreate(ctx, sub2); err != nil {
+		t.Fatalf("TermCreate() error = %v, want nil", err)
+	}
+	if err := store.TermCreate(ctx, sub3); err != nil {
+		t.Fatalf("TermCreate() error = %v, want nil", err)
+	}
+
+	// Verify subcategories have correct sequences
+	found1, err := store.TermFindByID(ctx, sub1.GetID())
+	if err != nil {
+		t.Fatalf("TermFindByID() error = %v, want nil", err)
+	}
+	if found1.GetSequence() != 3 {
+		t.Errorf("sub1.GetSequence() = %d, want %d", found1.GetSequence(), 3)
+	}
+
+	found2, err := store.TermFindByID(ctx, sub2.GetID())
+	if err != nil {
+		t.Fatalf("TermFindByID() error = %v, want nil", err)
+	}
+	if found2.GetSequence() != 1 {
+		t.Errorf("sub2.GetSequence() = %d, want %d", found2.GetSequence(), 1)
+	}
+
+	found3, err := store.TermFindByID(ctx, sub3.GetID())
+	if err != nil {
+		t.Fatalf("TermFindByID() error = %v, want nil", err)
+	}
+	if found3.GetSequence() != 2 {
+		t.Errorf("sub3.GetSequence() = %d, want %d", found3.GetSequence(), 2)
+	}
+
+	// Verify parent ID is set correctly
+	if found1.GetParentID() != parent.GetID() {
+		t.Errorf("sub1.GetParentID() = %q, want %q", found1.GetParentID(), parent.GetID())
 	}
 }
 

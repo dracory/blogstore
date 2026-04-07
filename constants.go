@@ -47,7 +47,7 @@ const COLUMN_POST_ID = "post_id"
 const COLUMN_SLUG = "slug"
 const COLUMN_TAXONOMY_ID = "taxonomy_id"
 const COLUMN_TERM_ID = "term_id"
-const COLUMN_TERM_SEQUENCE = "sequence"
+const COLUMN_SEQUENCE = "sequence"
 
 // Taxonomy types (pre-defined)
 const TAXONOMY_CATEGORY = "category"

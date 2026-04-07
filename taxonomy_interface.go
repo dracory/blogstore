@@ -59,6 +59,10 @@ type TermInterface interface {
 	GetParentID() string
 	SetParentID(parentID string) TermInterface
 
+	// For ordering subcategories within parent (0 = default)
+	GetSequence() int
+	SetSequence(sequence int) TermInterface
+
 	// Display
 	GetName() string
 	SetName(name string) TermInterface
