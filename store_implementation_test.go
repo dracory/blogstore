@@ -54,7 +54,7 @@ func TestStoreVersioningCreateAndList(t *testing.T) {
 
 	list, err := store.VersioningList(context.Background(), NewVersioningQuery().
 		SetEntityType(VERSIONING_TYPE_POST).
-		SetEntityID(post.ID()).
+		SetEntityID(post.GetID()).
 		SetOrderBy(versionstore.COLUMN_CREATED_AT).
 		SetSortOrder(sb.DESC))
 	if err != nil {
@@ -121,7 +121,7 @@ func TestBlogRepositoryBlogPostFindByID(t *testing.T) {
 		t.Error("unexpected error:", err)
 	}
 
-	postFound, errFind := store.PostFindByID(context.Background(), post.ID())
+	postFound, errFind := store.PostFindByID(context.Background(), post.GetID())
 	if errFind != nil {
 		t.Error("unexpected error:", errFind)
 	}
@@ -133,36 +133,36 @@ func TestBlogRepositoryBlogPostFindByID(t *testing.T) {
 		t.Error("BlogPost MUST NOT be nil")
 	}
 
-	if postFound.Title() != "2nd article" {
-		t.Error("BlogPost first name MUST BE 'John', found: ", postFound.Title())
+	if postFound.GetTitle() != "2nd article" {
+		t.Error("BlogPost first name MUST BE 'John', found: ", postFound.GetTitle())
 	}
 
-	if postFound.Summary() != "Post Summary" {
-		t.Error("BlogPost summary MUST BE 'Post Summary', found: ", postFound.Summary())
+	if postFound.GetSummary() != "Post Summary" {
+		t.Error("BlogPost summary MUST BE 'Post Summary', found: ", postFound.GetSummary())
 	}
 
-	if postFound.Content() != "Post Content" {
-		t.Error("BlogPost content MUST BE 'Post Content', found: ", postFound.Content())
+	if postFound.GetContent() != "Post Content" {
+		t.Error("BlogPost content MUST BE 'Post Content', found: ", postFound.GetContent())
 	}
 
-	if postFound.AuthorID() != "Post Author ID" {
-		t.Error("BlogPost author ID MUST BE 'Post Content', found: ", postFound.AuthorID())
+	if postFound.GetAuthorID() != "Post Author ID" {
+		t.Error("BlogPost author ID MUST BE 'Post Content', found: ", postFound.GetAuthorID())
 	}
 
-	if postFound.ImageUrl() != "http://test.com/test.png" {
-		t.Error("BlogPost image URL MUST BE 'http://test.com/test.png', found: ", postFound.ImageUrl())
+	if postFound.GetImageUrl() != "http://test.com/test.png" {
+		t.Error("BlogPost image URL MUST BE 'http://test.com/test.png', found: ", postFound.GetImageUrl())
 	}
 
-	if postFound.Status() != POST_STATUS_UNPUBLISHED {
-		t.Error("BlogPost status MUST BE 'Unpublished', found: ", postFound.Status())
+	if postFound.GetStatus() != POST_STATUS_UNPUBLISHED {
+		t.Error("BlogPost status MUST BE 'Unpublished', found: ", postFound.GetStatus())
 	}
 
-	if postFound.CreatedAt() == "" {
-		t.Error("BlogPost created MUST NOT BE empty, found: ", postFound.CreatedAt())
+	if postFound.GetCreatedAt() == "" {
+		t.Error("BlogPost created MUST NOT BE empty, found: ", postFound.GetCreatedAt())
 	}
 
-	if postFound.UpdatedAt() == "" {
-		t.Error("BlogPost updated MUST NOT BE empty, found: ", postFound.UpdatedAt())
+	if postFound.GetUpdatedAt() == "" {
+		t.Error("BlogPost updated MUST NOT BE empty, found: ", postFound.GetUpdatedAt())
 	}
 }
 
@@ -211,8 +211,8 @@ func TestStorePostListAndCount(t *testing.T) {
 	if len(list) != 1 {
 		t.Fatalf("PostList() len = %d, want %d", len(list), 1)
 	}
-	if list[0].Title() != "Post 1" {
-		t.Errorf("PostList()[0].Title() = %q, want %q", list[0].Title(), "Post 1")
+	if list[0].GetTitle() != "Post 1" {
+		t.Errorf("PostList()[0].Title() = %q, want %q", list[0].GetTitle(), "Post 1")
 	}
 }
 
@@ -243,15 +243,15 @@ func TestStorePostTrashAndUpdate(t *testing.T) {
 		t.Fatalf("PostTrash() error = %v, want nil", err)
 	}
 
-	found, err := store.PostFindByID(ctx, post.ID())
+	found, err := store.PostFindByID(ctx, post.GetID())
 	if err != nil {
 		t.Fatalf("PostFindByID() error = %v, want nil", err)
 	}
 	if found == nil {
 		t.Fatalf("PostFindByID() returned nil, want non-nil")
 	}
-	if found.Status() != POST_STATUS_TRASH {
-		t.Errorf("Status after PostTrash() = %q, want %q", found.Status(), POST_STATUS_TRASH)
+	if found.GetStatus() != POST_STATUS_TRASH {
+		t.Errorf("Status after PostTrash() = %q, want %q", found.GetStatus(), POST_STATUS_TRASH)
 	}
 }
 
@@ -287,7 +287,7 @@ func TestStorePostSoftDeleteAndDelete(t *testing.T) {
 		t.Fatalf("PostCount() before soft delete = %d, want %d", count, 1)
 	}
 
-	if err := store.PostSoftDeleteByID(ctx, post.ID()); err != nil {
+	if err := store.PostSoftDeleteByID(ctx, post.GetID()); err != nil {
 		t.Fatalf("PostSoftDeleteByID() error = %v, want nil", err)
 	}
 
@@ -300,7 +300,7 @@ func TestStorePostSoftDeleteAndDelete(t *testing.T) {
 		t.Fatalf("PostCount() after soft delete = %d, want %d", count, 0)
 	}
 
-	found, err := store.PostFindByID(ctx, post.ID())
+	found, err := store.PostFindByID(ctx, post.GetID())
 	if err != nil {
 		t.Fatalf("PostFindByID() after soft delete error = %v, want nil", err)
 	}
@@ -317,11 +317,11 @@ func TestStorePostSoftDeleteAndDelete(t *testing.T) {
 		t.Fatalf("PostCreate() error = %v, want nil", err)
 	}
 
-	if err := store.PostDeleteByID(ctx, post2.ID()); err != nil {
+	if err := store.PostDeleteByID(ctx, post2.GetID()); err != nil {
 		t.Fatalf("PostDeleteByID() error = %v, want nil", err)
 	}
 
-	found2, err := store.PostFindByID(ctx, post2.ID())
+	found2, err := store.PostFindByID(ctx, post2.GetID())
 	if err != nil {
 		t.Fatalf("PostFindByID() after delete error = %v, want nil", err)
 	}
@@ -377,7 +377,7 @@ func TestStorePostFindPreviousAndNext(t *testing.T) {
 	}
 
 	// reload middle post from DB to ensure timestamps persisted
-	mid, err := store.PostFindByID(ctx, p2.ID())
+	mid, err := store.PostFindByID(ctx, p2.GetID())
 	if err != nil {
 		t.Fatalf("PostFindByID() error = %v, want nil", err)
 	}
@@ -392,8 +392,8 @@ func TestStorePostFindPreviousAndNext(t *testing.T) {
 	if prev == nil {
 		t.Fatalf("PostFindPrevious() returned nil, want previous post")
 	}
-	if prev.Title() != "First" {
-		t.Errorf("PostFindPrevious() Title = %q, want %q", prev.Title(), "First")
+	if prev.GetTitle() != "First" {
+		t.Errorf("PostFindPrevious() Title = %q, want %q", prev.GetTitle(), "First")
 	}
 
 	next, err := store.PostFindNext(mid)
@@ -403,8 +403,8 @@ func TestStorePostFindPreviousAndNext(t *testing.T) {
 	if next == nil {
 		t.Fatalf("PostFindNext() returned nil, want next post")
 	}
-	if next.Title() != "Third" {
-		t.Errorf("PostFindNext() Title = %q, want %q", next.Title(), "Third")
+	if next.GetTitle() != "Third" {
+		t.Errorf("PostFindNext() Title = %q, want %q", next.GetTitle(), "Third")
 	}
 }
 
@@ -463,12 +463,12 @@ func TestStorePostListSearchOrderingAndWithDeleted(t *testing.T) {
 	if len(list) != 3 {
 		t.Fatalf("PostList() with ordering len = %d, want %d", len(list), 3)
 	}
-	if list[0].Title() != "Golang testing" || list[2].Title() != "Irrelevant" {
-		t.Errorf("PostList() ordering unexpected titles: first=%q last=%q", list[0].Title(), list[2].Title())
+	if list[0].GetTitle() != "Golang testing" || list[2].GetTitle() != "Irrelevant" {
+		t.Errorf("PostList() ordering unexpected titles: first=%q last=%q", list[0].GetTitle(), list[2].GetTitle())
 	}
 
 	// soft delete one and verify WithDeleted behaviour
-	if err := store.PostSoftDeleteByID(ctx, p1.ID()); err != nil {
+	if err := store.PostSoftDeleteByID(ctx, p1.GetID()); err != nil {
 		t.Fatalf("PostSoftDeleteByID() error = %v, want nil", err)
 	}
 

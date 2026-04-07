@@ -59,23 +59,23 @@ func TestPostUnmarshalFromVersioning(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify data was restored correctly
-	title := newPost.Title()
+	title := newPost.GetTitle()
 	assert.Equal(t, "Original Title", title)
 
-	content := newPost.Content()
+	content := newPost.GetContent()
 	assert.Equal(t, "Original Content", content)
 
-	summary := newPost.Summary()
+	summary := newPost.GetSummary()
 	assert.Equal(t, "Original Summary", summary)
 
-	status := newPost.Status()
+	status := newPost.GetStatus()
 	assert.Equal(t, POST_STATUS_DRAFT, status)
 
-	featured := newPost.Featured()
+	featured := newPost.GetFeatured()
 	assert.Equal(t, NO, featured)
 
 	// Verify that updated_at was set to current time
-	updatedAt := newPost.UpdatedAt()
+	updatedAt := newPost.GetUpdatedAt()
 
 	// Parse the updated_at timestamp
 	parsedTime := carbon.Parse(updatedAt)
@@ -105,14 +105,14 @@ func TestPostUnmarshalFromVersioningWithInvalidTimestamps(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify data was restored (except timestamps)
-	title := post.Title()
+	title := post.GetTitle()
 	assert.Equal(t, "Test Title", title)
 
-	status := post.Status()
+	status := post.GetStatus()
 	assert.Equal(t, POST_STATUS_PUBLISHED, status)
 
 	// Verify that updated_at was set to current time (not the invalid timestamp)
-	updatedAt := post.UpdatedAt()
+	updatedAt := post.GetUpdatedAt()
 
 	parsedTime := carbon.Parse(updatedAt)
 
@@ -164,41 +164,41 @@ func TestPostVersioningRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify all fields were restored correctly
-	title := newPost.Title()
+	title := newPost.GetTitle()
 	assert.Equal(t, "Round Trip Test", title)
 
-	content := newPost.Content()
+	content := newPost.GetContent()
 	assert.Equal(t, "This is test content for round trip testing", content)
 
-	summary := newPost.Summary()
+	summary := newPost.GetSummary()
 	assert.Equal(t, "Test summary", summary)
 
-	status := newPost.Status()
+	status := newPost.GetStatus()
 	assert.Equal(t, POST_STATUS_PUBLISHED, status)
 
-	featured := newPost.Featured()
+	featured := newPost.GetFeatured()
 	assert.Equal(t, YES, featured)
 
-	metaDesc := newPost.MetaDescription()
+	metaDesc := newPost.GetMetaDescription()
 	assert.Equal(t, "Meta description", metaDesc)
 
-	metaKeywords := newPost.MetaKeywords()
+	metaKeywords := newPost.GetMetaKeywords()
 	assert.Equal(t, "test,keywords", metaKeywords)
 
-	metaRobots := newPost.MetaRobots()
+	metaRobots := newPost.GetMetaRobots()
 	assert.Equal(t, "index,follow", metaRobots)
 
-	canonicalURL := newPost.CanonicalURL()
+	canonicalURL := newPost.GetCanonicalURL()
 	assert.Equal(t, "https://example.com/test", canonicalURL)
 
-	imageUrl := newPost.ImageUrl()
+	imageUrl := newPost.GetImageUrl()
 	assert.Equal(t, "https://example.com/image.jpg", imageUrl)
 
-	memo := newPost.Memo()
+	memo := newPost.GetMemo()
 	assert.Equal(t, "Test memo", memo)
 
 	// Verify metas
-	metas, err := newPost.Metas()
+	metas, err := newPost.GetMetas()
 	require.NoError(t, err)
 	assert.Equal(t, "value1", metas["custom_field1"])
 	assert.Equal(t, "value2", metas["custom_field2"])

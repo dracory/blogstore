@@ -207,7 +207,7 @@ func Test_MCP_ToolsCall_StandardMethod_PostCRUD(t *testing.T) {
 	if len(posts) != 1 {
 		t.Fatalf("Expected 1 post, got %d", len(posts))
 	}
-	postID := posts[0].ID()
+	postID := posts[0].GetID()
 	if postID == "" {
 		t.Fatalf("Expected created post to have non-empty ID")
 	}
@@ -418,14 +418,14 @@ func Test_MCP_PostUpsert_CreateAndUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to find updated post: %v", err)
 	}
-	if updatedPost.Title() != "Updated Upsert Post" {
-		t.Fatalf("Expected post title to be updated. Got: %s", updatedPost.Title())
+	if updatedPost.GetTitle() != "Updated Upsert Post" {
+		t.Fatalf("Expected post title to be updated. Got: %s", updatedPost.GetTitle())
 	}
-	if updatedPost.Status() != "published" {
-		t.Fatalf("Expected post status to be published. Got: %s", updatedPost.Status())
+	if updatedPost.GetStatus() != "published" {
+		t.Fatalf("Expected post status to be published. Got: %s", updatedPost.GetStatus())
 	}
-	if updatedPost.Featured() != "yes" {
-		t.Fatalf("Expected post to be featured. Got: %s", updatedPost.Featured())
+	if updatedPost.GetFeatured() != "yes" {
+		t.Fatalf("Expected post to be featured. Got: %s", updatedPost.GetFeatured())
 	}
 
 	// Check that a new version was created

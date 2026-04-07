@@ -9,28 +9,28 @@ import (
 // PostInterface defines the interface for blog post operations
 type PostInterface interface {
 	// Identity
-	ID() string
+	GetID() string
 	SetID(id string) PostInterface
 
 	// Author
-	AuthorID() string
+	GetAuthorID() string
 	SetAuthorID(authorID string) PostInterface
 
 	// Content
-	Title() string
+	GetTitle() string
 	SetTitle(title string) PostInterface
-	Slug() string
+	GetSlug() string
 
-	Content() string
+	GetContent() string
 	SetContent(content string) PostInterface
 
-	Summary() string
+	GetSummary() string
 	SetSummary(summary string) PostInterface
 
 	// Content Type and Editor
-	ContentType() string
+	GetContentType() string
 	SetContentType(contentType string) PostInterface
-	Editor() string
+	GetEditor() string
 	SetEditor(editor string) PostInterface
 
 	IsContentMarkdown() bool
@@ -39,25 +39,25 @@ type PostInterface interface {
 	IsContentBlocks() bool
 
 	// SEO and Meta
-	CanonicalURL() string
+	GetCanonicalURL() string
 	SetCanonicalURL(canonicalURL string) PostInterface
 
-	MetaDescription() string
+	GetMetaDescription() string
 	SetMetaDescription(metaDescription string) PostInterface
 
-	MetaKeywords() string
+	GetMetaKeywords() string
 	SetMetaKeywords(metaKeywords string) PostInterface
 
-	MetaRobots() string
+	GetMetaRobots() string
 	SetMetaRobots(metaRobots string) PostInterface
 
 	// Featured Image
-	ImageUrl() string
+	GetImageUrl() string
 	SetImageUrl(imageURL string) PostInterface
-	ImageUrlOrDefault() string
+	GetImageUrlOrDefault() string
 
 	// Status
-	Status() string
+	GetStatus() string
 	SetStatus(status string) PostInterface
 
 	IsDraft() bool
@@ -66,37 +66,37 @@ type PostInterface interface {
 	IsTrashed() bool
 
 	// Publishing
-	PublishedAt() string
+	GetPublishedAt() string
 	SetPublishedAt(publishedAt string) PostInterface
-	PublishedAtCarbon() *carbon.Carbon
-	PublishedAtTime() time.Time
+	GetPublishedAtCarbon() *carbon.Carbon
+	GetPublishedAtTime() time.Time
 
 	// Timestamps
-	CreatedAt() string
+	GetCreatedAt() string
 	SetCreatedAt(createdAt string) PostInterface
-	CreatedAtCarbon() *carbon.Carbon
-	CreatedAtTime() time.Time
+	GetCreatedAtCarbon() *carbon.Carbon
+	GetCreatedAtTime() time.Time
 
-	UpdatedAt() string
+	GetUpdatedAt() string
 	SetUpdatedAt(updatedAt string) PostInterface
-	UpdatedAtCarbon() *carbon.Carbon
+	GetUpdatedAtCarbon() *carbon.Carbon
 
-	SoftDeletedAt() string
+	GetSoftDeletedAt() string
 	SetSoftDeletedAt(deletedAt string) PostInterface
-	SoftDeletedAtCarbon() *carbon.Carbon
+	GetSoftDeletedAtCarbon() *carbon.Carbon
 
 	// Memo
-	Memo() string
+	GetMemo() string
 	SetMemo(memo string) PostInterface
 
 	// Featured flag
-	Featured() string
+	GetFeatured() string
 	SetFeatured(featured string) PostInterface
 
 	// Metadata
-	Meta(key string) string
+	GetMeta(key string) string
 	SetMeta(key string, value string) error
-	Metas() (map[string]string, error)
+	GetMetas() (map[string]string, error)
 	SetMetas(metas map[string]string) error
 	AddMetas(metas map[string]string) error
 
@@ -105,8 +105,8 @@ type PostInterface interface {
 	UnmarshalFromVersioning(content string) error
 
 	// DataObject methods (from embedded dataobject.DataObject)
-	Data() map[string]string
-	DataChanged() map[string]string
+	GetData() map[string]string
+	GetDataChanged() map[string]string
 	MarkAsNotDirty()
 	Get(key string) string
 	Set(key string, value string)

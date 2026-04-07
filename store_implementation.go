@@ -69,7 +69,7 @@ func (store *storeImplementation) PostCreate(ctx context.Context, post PostInter
 	post.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 	post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
-	data := post.Data()
+	data := post.GetData()
 
 	sqlStr, sqlParams, errSql := goqu.Dialect(store.dbDriverName).
 		Insert(store.postTableName).
@@ -92,7 +92,7 @@ func (store *storeImplementation) PostCreate(ctx context.Context, post PostInter
 	}
 
 	post.MarkAsNotDirty()
-	if err := store.versioningTrackEntity(ctx, VERSIONING_TYPE_POST, post.ID(), post); err != nil {
+	if err := store.versioningTrackEntity(ctx, VERSIONING_TYPE_POST, post.GetID(), post); err != nil {
 		return err
 	}
 
@@ -153,7 +153,7 @@ func (store *storeImplementation) PostDelete(ctx context.Context, post PostInter
 		return errors.New("post is nil")
 	}
 
-	return store.PostDeleteByID(ctx, post.ID())
+	return store.PostDeleteByID(ctx, post.GetID())
 }
 
 func (store *storeImplementation) PostDeleteByID(ctx context.Context, id string) error {
@@ -226,7 +226,7 @@ func (store *storeImplementation) PostFindByID(ctx context.Context, id string) (
 
 func (st *storeImplementation) PostFindPrevious(post PostInterface) (PostInterface, error) {
 	list, err := st.PostList(context.Background(), PostQueryOptions{
-		CreatedAtLessThan: post.CreatedAtCarbon().ToDateTimeString(),
+		CreatedAtLessThan: post.GetCreatedAtCarbon().ToDateTimeString(),
 		Limit:             1,
 	})
 
@@ -243,7 +243,7 @@ func (st *storeImplementation) PostFindPrevious(post PostInterface) (PostInterfa
 
 func (st *storeImplementation) PostFindNext(post PostInterface) (PostInterface, error) {
 	list, err := st.PostList(context.Background(), PostQueryOptions{
-		CreatedAtGreaterThan: post.CreatedAtCarbon().ToDateTimeString(),
+		CreatedAtGreaterThan: post.GetCreatedAtCarbon().ToDateTimeString(),
 		Limit:                1,
 	})
 
@@ -320,7 +320,7 @@ func (st *storeImplementation) PostUpdate(ctx context.Context, post PostInterfac
 
 	// post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
-	dataChanged := post.DataChanged()
+	dataChanged := post.GetDataChanged()
 
 	delete(dataChanged, "id")   // ID is not updatable
 	delete(dataChanged, "hash") // Hash is not updatable
@@ -333,7 +333,7 @@ func (st *storeImplementation) PostUpdate(ctx context.Context, post PostInterfac
 	sqlStr, params, errSql := goqu.Dialect(st.dbDriverName).
 		Update(st.postTableName).
 		Set(dataChanged).
-		Where(goqu.C(COLUMN_ID).Eq(post.ID())).
+		Where(goqu.C(COLUMN_ID).Eq(post.GetID())).
 		Prepared(true).
 		ToSQL()
 
@@ -348,7 +348,7 @@ func (st *storeImplementation) PostUpdate(ctx context.Context, post PostInterfac
 	_, err := st.db.ExecContext(ctx, sqlStr, params...)
 
 	post.MarkAsNotDirty()
-	if err2 := st.versioningTrackEntity(ctx, VERSIONING_TYPE_POST, post.ID(), post); err2 != nil {
+	if err2 := st.versioningTrackEntity(ctx, VERSIONING_TYPE_POST, post.GetID(), post); err2 != nil {
 		return err2
 	}
 

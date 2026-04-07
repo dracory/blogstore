@@ -14,7 +14,7 @@ type versioningMarshalToInterface interface {
 }
 
 type versioningDataInterface interface {
-	Data() map[string]string
+	GetData() map[string]string
 }
 
 func (store *storeImplementation) versioningContentFromEntity(entity any) (string, error) {
@@ -32,7 +32,7 @@ func (store *storeImplementation) versioningContentFromEntity(entity any) (strin
 	}
 
 	versionedData := map[string]string{}
-	for k, v := range d.Data() {
+	for k, v := range d.GetData() {
 		if k == COLUMN_CREATED_AT ||
 			k == COLUMN_UPDATED_AT ||
 			k == COLUMN_SOFT_DELETED_AT {

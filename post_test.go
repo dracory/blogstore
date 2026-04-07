@@ -21,35 +21,35 @@ func TestNewPostDefaults(t *testing.T) {
 		t.Fatalf("NewPost() returned nil")
 	}
 
-	if p.ID() == "" {
+	if p.GetID() == "" {
 		t.Errorf("NewPost() must set a non-empty ID")
 	}
 
-	if got := p.Status(); got != POST_STATUS_DRAFT {
+	if got := p.GetStatus(); got != POST_STATUS_DRAFT {
 		t.Errorf("NewPost() status = %q, want %q", got, POST_STATUS_DRAFT)
 	}
 
-	if got := p.PublishedAt(); got == "" {
+	if got := p.GetPublishedAt(); got == "" {
 		t.Errorf("NewPost() PublishedAt must not be empty")
 	}
 
-	if got := p.CreatedAt(); got == "" {
+	if got := p.GetCreatedAt(); got == "" {
 		t.Errorf("NewPost() CreatedAt must not be empty")
 	}
 
-	if got := p.UpdatedAt(); got == "" {
+	if got := p.GetUpdatedAt(); got == "" {
 		t.Errorf("NewPost() UpdatedAt must not be empty")
 	}
 
-	if got := p.SoftDeletedAt(); got != sb.MAX_DATETIME {
+	if got := p.GetSoftDeletedAt(); got != sb.MAX_DATETIME {
 		t.Errorf("NewPost() SoftDeletedAt = %q, want %q", got, sb.MAX_DATETIME)
 	}
 
-	if got := p.Featured(); got != NO {
+	if got := p.GetFeatured(); got != NO {
 		t.Errorf("NewPost() Featured = %q, want %q", got, NO)
 	}
 
-	metas, err := p.Metas()
+	metas, err := p.GetMetas()
 	if err != nil {
 		t.Fatalf("NewPost() Metas error = %v, want nil", err)
 	}
@@ -70,7 +70,7 @@ func TestPostMetasAndMetaHelpers(t *testing.T) {
 		t.Fatalf("SetMetas() error = %v, want nil", err)
 	}
 
-	metas, err := p.Metas()
+	metas, err := p.GetMetas()
 	if err != nil {
 		t.Fatalf("Metas() error = %v, want nil", err)
 	}
@@ -85,7 +85,7 @@ func TestPostMetasAndMetaHelpers(t *testing.T) {
 		t.Fatalf("AddMetas() error = %v, want nil", err)
 	}
 
-	metas, err = p.Metas()
+	metas, err = p.GetMetas()
 	if err != nil {
 		t.Fatalf("Metas() after AddMetas error = %v, want nil", err)
 	}
@@ -102,11 +102,11 @@ func TestPostMetasAndMetaHelpers(t *testing.T) {
 		t.Fatalf("SetMeta() error = %v, want nil", err)
 	}
 
-	if got := p.Meta("editor"); got != "alice" {
+	if got := p.GetMeta("editor"); got != "alice" {
 		t.Errorf("Meta(\"editor\") = %q, want %q", got, "alice")
 	}
 
-	if got := p.Editor(); got != "alice" {
+	if got := p.GetEditor(); got != "alice" {
 		t.Errorf("Editor() = %q, want %q", got, "alice")
 	}
 }
@@ -171,21 +171,21 @@ func TestPostSlugAndImageUrlOrDefault(t *testing.T) {
 	p := NewPost()
 
 	p.SetTitle("Hello World Post")
-	if got := p.Slug(); got == "" {
+	if got := p.GetSlug(); got == "" {
 		t.Errorf("Slug() must not be empty")
 	}
 
 	// default image uses fallback URL
-	if got := p.ImageUrl(); got != "" {
+	if got := p.GetImageUrl(); got != "" {
 		t.Errorf("default ImageUrl() = %q, want empty", got)
 	}
-	if got := p.ImageUrlOrDefault(); got == "" {
+	if got := p.GetImageUrlOrDefault(); got == "" {
 		t.Errorf("ImageUrlOrDefault() must not be empty")
 	}
 
 	// when image is set, ImageUrlOrDefault returns provided value
 	p.SetImageUrl("http://example.com/img.png")
-	if got := p.ImageUrlOrDefault(); got != "http://example.com/img.png" {
+	if got := p.GetImageUrlOrDefault(); got != "http://example.com/img.png" {
 		t.Errorf("ImageUrlOrDefault() = %q, want %q", got, "http://example.com/img.png")
 	}
 }

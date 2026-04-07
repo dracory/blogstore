@@ -20,34 +20,34 @@ func TestPostContentTypeMethods(t *testing.T) {
 	post := blogstore.NewPost()
 
 	// Test default content type
-	assert.Equal(t, "", post.ContentType(), "Default content type should be empty")
+	assert.Equal(t, "", post.GetContentType(), "Default content type should be empty")
 	assert.False(t, post.IsContentMarkdown(), "Should not be markdown by default")
 	assert.False(t, post.IsContentHtml(), "Should not be HTML by default")
 	assert.False(t, post.IsContentPlainText(), "Should not be plain text by default")
 
 	// Test SetContentType with markdown
 	post.SetContentType(blogstore.POST_CONTENT_TYPE_MARKDOWN)
-	assert.Equal(t, blogstore.POST_CONTENT_TYPE_MARKDOWN, post.ContentType())
+	assert.Equal(t, blogstore.POST_CONTENT_TYPE_MARKDOWN, post.GetContentType())
 	assert.True(t, post.IsContentMarkdown(), "Should be markdown")
 	assert.False(t, post.IsContentHtml(), "Should not be HTML")
 	assert.False(t, post.IsContentPlainText(), "Should not be plain text")
 
 	// Test SetContentType with HTML
 	post.SetContentType(blogstore.POST_CONTENT_TYPE_HTML)
-	assert.Equal(t, blogstore.POST_CONTENT_TYPE_HTML, post.ContentType())
+	assert.Equal(t, blogstore.POST_CONTENT_TYPE_HTML, post.GetContentType())
 	assert.False(t, post.IsContentMarkdown(), "Should not be markdown")
 	assert.True(t, post.IsContentHtml(), "Should be HTML")
 	assert.False(t, post.IsContentPlainText(), "Should not be plain text")
 
 	// Test SetContentType with plain text
 	post.SetContentType(blogstore.POST_CONTENT_TYPE_PLAIN_TEXT)
-	assert.Equal(t, blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, post.ContentType())
+	assert.Equal(t, blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, post.GetContentType())
 	assert.False(t, post.IsContentMarkdown(), "Should not be markdown")
 	assert.False(t, post.IsContentHtml(), "Should not be HTML")
 	assert.True(t, post.IsContentPlainText(), "Should be plain text")
 
 	// Test that it's stored in metas
-	assert.Equal(t, blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, post.Meta("content_type"))
+	assert.Equal(t, blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, post.GetMeta("content_type"))
 }
 
 func TestContentTypeToEditor(t *testing.T) {
@@ -198,12 +198,12 @@ func TestPostCreateWithContentType(t *testing.T) {
 			require.NotNil(t, post)
 
 			// Check content_type using the new method
-			storedContentType := post.ContentType()
+			storedContentType := post.GetContentType()
 			assert.Equal(t, tt.expected, storedContentType)
 
 			// Check editor was set correctly
 			expectedEditor := contentTypeToEditor(tt.expected)
-			assert.Equal(t, expectedEditor, post.Editor())
+			assert.Equal(t, expectedEditor, post.GetEditor())
 		})
 	}
 }
@@ -238,7 +238,7 @@ func TestPostUpdateWithContentType(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify post was created and has an ID
-	require.NotEmpty(t, post.ID(), "Post should have an ID after creation")
+	require.NotEmpty(t, post.GetID(), "Post should have an ID after creation")
 
 	// Test updating content_type
 	tests := []struct {
@@ -270,10 +270,10 @@ func TestPostUpdateWithContentType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Verify post exists before update
-			existingPost, err := store.PostFindByID(context.Background(), post.ID())
+			existingPost, err := store.PostFindByID(context.Background(), post.GetID())
 			require.NoError(t, err)
 			require.NotNil(t, existingPost, "Post should exist before update")
-			t.Logf("Updating post with ID: %s", post.ID())
+			t.Logf("Updating post with ID: %s", post.GetID())
 
 			// Update request using post_upsert
 			request := map[string]any{
@@ -283,7 +283,7 @@ func TestPostUpdateWithContentType(t *testing.T) {
 				"params": map[string]any{
 					"name": "post_upsert",
 					"arguments": map[string]any{
-						"id":           post.ID(),
+						"id":           post.GetID(),
 						"content":      tt.content,
 						"content_type": tt.contentType,
 					},
@@ -301,20 +301,20 @@ func TestPostUpdateWithContentType(t *testing.T) {
 			assert.Equal(t, http.StatusOK, w.Code)
 
 			// Retrieve updated post
-			updatedPost, err := store.PostFindByID(context.Background(), post.ID())
+			updatedPost, err := store.PostFindByID(context.Background(), post.GetID())
 			require.NoError(t, err)
 			require.NotNil(t, updatedPost)
 
 			// Check content_type was updated using the new method
-			storedContentType := updatedPost.ContentType()
+			storedContentType := updatedPost.GetContentType()
 			assert.Equal(t, tt.expected, storedContentType)
 
 			// Check editor was updated correctly
 			expectedEditor := contentTypeToEditor(tt.expected)
-			assert.Equal(t, expectedEditor, updatedPost.Editor())
+			assert.Equal(t, expectedEditor, updatedPost.GetEditor())
 
 			// Check content was updated
-			assert.Equal(t, tt.content, updatedPost.Content())
+			assert.Equal(t, tt.content, updatedPost.GetContent())
 		})
 	}
 }
@@ -390,11 +390,11 @@ func TestPostCreateWithoutContentType(t *testing.T) {
 	require.NotNil(t, createdPost)
 
 	// Check default content_type was set using the new method
-	storedContentType := createdPost.ContentType()
+	storedContentType := createdPost.GetContentType()
 	assert.Equal(t, blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, storedContentType)
 
 	// Check default editor was set
-	assert.Equal(t, blogstore.POST_EDITOR_TEXTAREA, createdPost.Editor())
+	assert.Equal(t, blogstore.POST_EDITOR_TEXTAREA, createdPost.GetEditor())
 }
 
 func TestBlogSchemaIncludesContentType(t *testing.T) {

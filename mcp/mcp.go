@@ -388,7 +388,7 @@ func postToMap(post blogstore.PostInterface) map[string]string {
 		return map[string]string{}
 	}
 
-	data := post.Data()
+	data := post.GetData()
 
 	// Shorten the ID for API response
 	if id, ok := data["id"]; ok {
@@ -700,10 +700,10 @@ func (m *MCP) toolPostUpsert(ctx context.Context, args map[string]any) (string, 
 	contentType := argString(args, "content_type")
 	if contentType == "" {
 		// If updating existing post and no content_type provided, keep current
-		if post.ContentType() == "" {
+		if post.GetContentType() == "" {
 			contentType = blogstore.POST_CONTENT_TYPE_PLAIN_TEXT
 		} else {
-			contentType = post.ContentType()
+			contentType = post.GetContentType()
 		}
 	}
 
@@ -744,8 +744,8 @@ func (m *MCP) toolPostUpsert(ctx context.Context, args map[string]any) (string, 
 	}
 
 	b, _ := json.Marshal(map[string]any{
-		"id":     post.ID(),
-		"title":  post.Title(),
+		"id":     post.GetID(),
+		"title":  post.GetTitle(),
 		"action": "upserted",
 	})
 	return string(b), nil
