@@ -31,6 +31,8 @@ type storeImplementation struct {
 
 	versioningEnabled bool
 	versioningStore   versionstore.StoreInterface
+
+	taxonomyEnabled bool
 }
 
 // AutoMigrate auto migrate
@@ -47,40 +49,43 @@ func (store *storeImplementation) AutoMigrate() error {
 		return err
 	}
 
-	// Create taxonomy table
-	sql, err = store.sqlCreateTaxonomyTable()
-	if err != nil {
-		return err
-	}
+	// Create taxonomy tables only if enabled
+	if store.taxonomyEnabled {
+		// Create taxonomy table
+		sql, err = store.sqlCreateTaxonomyTable()
+		if err != nil {
+			return err
+		}
 
-	_, err = store.db.Exec(sql)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+		_, err = store.db.Exec(sql)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 
-	// Create term table
-	sql, err = store.sqlCreateTermTable()
-	if err != nil {
-		return err
-	}
+		// Create term table
+		sql, err = store.sqlCreateTermTable()
+		if err != nil {
+			return err
+		}
 
-	_, err = store.db.Exec(sql)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+		_, err = store.db.Exec(sql)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 
-	// Create term relation table
-	sql, err = store.sqlCreateTermRelationTable()
-	if err != nil {
-		return err
-	}
+		// Create term relation table
+		sql, err = store.sqlCreateTermRelationTable()
+		if err != nil {
+			return err
+		}
 
-	_, err = store.db.Exec(sql)
-	if err != nil {
-		log.Println(err)
-		return err
+		_, err = store.db.Exec(sql)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 	}
 
 	if store.versioningEnabled {

@@ -231,6 +231,7 @@ func TestStoreTaxonomyCreateAndFind(t *testing.T) {
 		PostTableName:      "blog_posts",
 		DB:                 db,
 		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
 	})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -280,6 +281,7 @@ func TestStoreTaxonomyListAndCount(t *testing.T) {
 		PostTableName:      "blog_posts",
 		DB:                 db,
 		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
 	})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -326,6 +328,7 @@ func TestStoreTermCreateAndFind(t *testing.T) {
 		PostTableName:      "blog_posts",
 		DB:                 db,
 		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
 	})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -382,6 +385,7 @@ func TestStoreTermListAndCount(t *testing.T) {
 		PostTableName:      "blog_posts",
 		DB:                 db,
 		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
 	})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -434,6 +438,7 @@ func TestStorePostTerms(t *testing.T) {
 		PostTableName:      "blog_posts",
 		DB:                 db,
 		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
 	})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -510,6 +515,7 @@ func TestStoreTermIncrementDecrementCount(t *testing.T) {
 		PostTableName:      "blog_posts",
 		DB:                 db,
 		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
 	})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -564,6 +570,7 @@ func TestStoreTaxonomyUpdate(t *testing.T) {
 		PostTableName:      "blog_posts",
 		DB:                 db,
 		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
 	})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -603,6 +610,7 @@ func TestStoreTermUpdate(t *testing.T) {
 		PostTableName:      "blog_posts",
 		DB:                 db,
 		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
 	})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -647,6 +655,7 @@ func TestStoreTermDelete(t *testing.T) {
 		PostTableName:      "blog_posts",
 		DB:                 db,
 		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
 	})
 	if err != nil {
 		t.Fatal("unexpected error:", err)

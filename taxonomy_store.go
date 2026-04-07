@@ -16,6 +16,9 @@ import (
 // ============================ TAXONOMY STORE METHODS ============================
 
 func (store *storeImplementation) TaxonomyCount(ctx context.Context, options TaxonomyQueryOptions) (int64, error) {
+	if !store.taxonomyEnabled {
+		return -1, errors.New("taxonomy is not enabled")
+	}
 	options.CountOnly = true
 	q := store.taxonomyQuery(options)
 
@@ -56,6 +59,9 @@ func (store *storeImplementation) TaxonomyCount(ctx context.Context, options Tax
 }
 
 func (store *storeImplementation) TaxonomyCreate(ctx context.Context, taxonomy TaxonomyInterface) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	taxonomy.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
 	data := taxonomy.GetData()
@@ -85,6 +91,9 @@ func (store *storeImplementation) TaxonomyCreate(ctx context.Context, taxonomy T
 }
 
 func (store *storeImplementation) TaxonomyDelete(ctx context.Context, taxonomy TaxonomyInterface) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if taxonomy == nil {
 		return errors.New("taxonomy is nil")
 	}
@@ -93,6 +102,9 @@ func (store *storeImplementation) TaxonomyDelete(ctx context.Context, taxonomy T
 }
 
 func (store *storeImplementation) TaxonomyDeleteByID(ctx context.Context, id string) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if id == "" {
 		return errors.New("taxonomy id is empty")
 	}
@@ -117,6 +129,9 @@ func (store *storeImplementation) TaxonomyDeleteByID(ctx context.Context, id str
 }
 
 func (store *storeImplementation) TaxonomyFindByID(ctx context.Context, id string) (TaxonomyInterface, error) {
+	if !store.taxonomyEnabled {
+		return nil, errors.New("taxonomy is not enabled")
+	}
 	if id == "" {
 		return nil, errors.New("taxonomy id is empty")
 	}
@@ -138,6 +153,9 @@ func (store *storeImplementation) TaxonomyFindByID(ctx context.Context, id strin
 }
 
 func (store *storeImplementation) TaxonomyFindBySlug(ctx context.Context, slug string) (TaxonomyInterface, error) {
+	if !store.taxonomyEnabled {
+		return nil, errors.New("taxonomy is not enabled")
+	}
 	if slug == "" {
 		return nil, errors.New("taxonomy slug is empty")
 	}
@@ -159,6 +177,9 @@ func (store *storeImplementation) TaxonomyFindBySlug(ctx context.Context, slug s
 }
 
 func (store *storeImplementation) TaxonomyList(ctx context.Context, options TaxonomyQueryOptions) ([]TaxonomyInterface, error) {
+	if !store.taxonomyEnabled {
+		return []TaxonomyInterface{}, errors.New("taxonomy is not enabled")
+	}
 	q := store.taxonomyQuery(options)
 
 	sqlStr, sqlParams, errSql := q.Select().
@@ -194,6 +215,9 @@ func (store *storeImplementation) TaxonomyList(ctx context.Context, options Taxo
 }
 
 func (store *storeImplementation) TaxonomyUpdate(ctx context.Context, taxonomy TaxonomyInterface) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if taxonomy == nil {
 		return errors.New("taxonomy is nil")
 	}
@@ -292,6 +316,9 @@ func (store *storeImplementation) taxonomyQuery(options TaxonomyQueryOptions) *g
 // ============================ TERM STORE METHODS ============================
 
 func (store *storeImplementation) TermCount(ctx context.Context, options TermQueryOptions) (int64, error) {
+	if !store.taxonomyEnabled {
+		return -1, errors.New("taxonomy is not enabled")
+	}
 	options.CountOnly = true
 	q := store.termQuery(options)
 
@@ -332,6 +359,9 @@ func (store *storeImplementation) TermCount(ctx context.Context, options TermQue
 }
 
 func (store *storeImplementation) TermCreate(ctx context.Context, term TermInterface) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	term.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
 	data := term.GetData()
@@ -361,6 +391,9 @@ func (store *storeImplementation) TermCreate(ctx context.Context, term TermInter
 }
 
 func (store *storeImplementation) TermDelete(ctx context.Context, term TermInterface) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if term == nil {
 		return errors.New("term is nil")
 	}
@@ -369,6 +402,9 @@ func (store *storeImplementation) TermDelete(ctx context.Context, term TermInter
 }
 
 func (store *storeImplementation) TermDeleteByID(ctx context.Context, id string) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if id == "" {
 		return errors.New("term id is empty")
 	}
@@ -393,6 +429,9 @@ func (store *storeImplementation) TermDeleteByID(ctx context.Context, id string)
 }
 
 func (store *storeImplementation) TermFindByID(ctx context.Context, id string) (TermInterface, error) {
+	if !store.taxonomyEnabled {
+		return nil, errors.New("taxonomy is not enabled")
+	}
 	if id == "" {
 		return nil, errors.New("term id is empty")
 	}
@@ -414,6 +453,9 @@ func (store *storeImplementation) TermFindByID(ctx context.Context, id string) (
 }
 
 func (store *storeImplementation) TermFindBySlug(ctx context.Context, taxonomySlug, termSlug string) (TermInterface, error) {
+	if !store.taxonomyEnabled {
+		return nil, errors.New("taxonomy is not enabled")
+	}
 	if taxonomySlug == "" || termSlug == "" {
 		return nil, errors.New("taxonomy slug and term slug are required")
 	}
@@ -447,6 +489,9 @@ func (store *storeImplementation) TermFindBySlug(ctx context.Context, taxonomySl
 }
 
 func (store *storeImplementation) TermList(ctx context.Context, options TermQueryOptions) ([]TermInterface, error) {
+	if !store.taxonomyEnabled {
+		return []TermInterface{}, errors.New("taxonomy is not enabled")
+	}
 	q := store.termQuery(options)
 
 	sqlStr, sqlParams, errSql := q.Select().
@@ -482,6 +527,9 @@ func (store *storeImplementation) TermList(ctx context.Context, options TermQuer
 }
 
 func (store *storeImplementation) TermUpdate(ctx context.Context, term TermInterface) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if term == nil {
 		return errors.New("term is nil")
 	}
@@ -590,6 +638,9 @@ func (store *storeImplementation) termQuery(options TermQueryOptions) *goqu.Sele
 // ============================ POST-TERM RELATIONSHIP METHODS ============================
 
 func (store *storeImplementation) PostTermAdd(ctx context.Context, postID string, termID string, sequence int) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if postID == "" || termID == "" {
 		return errors.New("post id and term id are required")
 	}
@@ -629,6 +680,9 @@ func (store *storeImplementation) PostTermAdd(ctx context.Context, postID string
 }
 
 func (store *storeImplementation) PostTermRemove(ctx context.Context, postID string, termID string) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if postID == "" || termID == "" {
 		return errors.New("post id and term id are required")
 	}
@@ -660,6 +714,9 @@ func (store *storeImplementation) PostTermRemove(ctx context.Context, postID str
 }
 
 func (store *storeImplementation) PostTerms(ctx context.Context, postID string, taxonomySlug string) ([]TermInterface, error) {
+	if !store.taxonomyEnabled {
+		return []TermInterface{}, errors.New("taxonomy is not enabled")
+	}
 	if postID == "" {
 		return []TermInterface{}, errors.New("post id is required")
 	}
@@ -706,6 +763,9 @@ func (store *storeImplementation) PostTerms(ctx context.Context, postID string, 
 }
 
 func (store *storeImplementation) PostSetTerms(ctx context.Context, postID string, taxonomySlug string, termIDs []string) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if postID == "" {
 		return errors.New("post id is required")
 	}
@@ -817,6 +877,9 @@ func (store *storeImplementation) termRelationList(ctx context.Context, options 
 // ============================ UTILITY METHODS ============================
 
 func (store *storeImplementation) TermIncrementCount(ctx context.Context, termID string) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if termID == "" {
 		return errors.New("term id is required")
 	}
@@ -832,6 +895,9 @@ func (store *storeImplementation) TermIncrementCount(ctx context.Context, termID
 }
 
 func (store *storeImplementation) TermDecrementCount(ctx context.Context, termID string) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
 	if termID == "" {
 		return errors.New("term id is required")
 	}

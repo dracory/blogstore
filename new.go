@@ -22,6 +22,8 @@ type NewStoreOptions struct {
 
 	VersioningEnabled   bool
 	VersioningTableName string
+
+	TaxonomyEnabled bool
 }
 
 // NewStore creates a new block store
@@ -82,6 +84,7 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 		debugEnabled:          opts.DebugEnabled,
 		versioningEnabled:     opts.VersioningEnabled,
 		versioningStore:       versionStore,
+		taxonomyEnabled:       opts.TaxonomyEnabled,
 	}
 
 	store.timeoutSeconds = 2 * 60 * 60 // 2 hours
