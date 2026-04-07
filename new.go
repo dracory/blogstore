@@ -56,7 +56,7 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 		versionStore = vs
 	}
 
-	store := &store{
+	store := &storeImplementation{
 		postTableName:      opts.PostTableName,
 		automigrateEnabled: opts.AutomigrateEnabled,
 		db:                 opts.DB,

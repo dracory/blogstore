@@ -17,7 +17,7 @@ type versioningDataInterface interface {
 	Data() map[string]string
 }
 
-func (store *store) versioningContentFromEntity(entity any) (string, error) {
+func (store *storeImplementation) versioningContentFromEntity(entity any) (string, error) {
 	if entity == nil {
 		return "", errors.New("entity is nil")
 	}
@@ -49,7 +49,7 @@ func (store *store) versioningContentFromEntity(entity any) (string, error) {
 	return string(b), nil
 }
 
-func (store *store) versioningCreateIfChanged(ctx context.Context, entityType string, entityID string, content string) error {
+func (store *storeImplementation) versioningCreateIfChanged(ctx context.Context, entityType string, entityID string, content string) error {
 	if !store.VersioningEnabled() {
 		return nil
 	}
@@ -89,7 +89,7 @@ func (store *store) versioningCreateIfChanged(ctx context.Context, entityType st
 		SetContent(content))
 }
 
-func (store *store) versioningTrackEntity(ctx context.Context, entityType string, entityID string, entity any) error {
+func (store *storeImplementation) versioningTrackEntity(ctx context.Context, entityType string, entityID string, entity any) error {
 	if !store.VersioningEnabled() {
 		return nil
 	}
@@ -102,35 +102,35 @@ func (store *store) versioningTrackEntity(ctx context.Context, entityType string
 	return store.versioningCreateIfChanged(ctx, entityType, entityID, content)
 }
 
-func (store *store) VersioningCreate(ctx context.Context, version VersioningInterface) error {
+func (store *storeImplementation) VersioningCreate(ctx context.Context, version VersioningInterface) error {
 	if store.versioningStore == nil {
 		return nil
 	}
 	return store.versioningStore.VersionCreate(store.toQueryableContext(ctx), version)
 }
 
-func (store *store) VersioningDelete(ctx context.Context, version VersioningInterface) error {
+func (store *storeImplementation) VersioningDelete(ctx context.Context, version VersioningInterface) error {
 	if store.versioningStore == nil {
 		return nil
 	}
 	return store.versioningStore.VersionDelete(store.toQueryableContext(ctx), version)
 }
 
-func (store *store) VersioningDeleteByID(ctx context.Context, id string) error {
+func (store *storeImplementation) VersioningDeleteByID(ctx context.Context, id string) error {
 	if store.versioningStore == nil {
 		return nil
 	}
 	return store.versioningStore.VersionDeleteByID(store.toQueryableContext(ctx), id)
 }
 
-func (store *store) VersioningFindByID(ctx context.Context, versioningID string) (VersioningInterface, error) {
+func (store *storeImplementation) VersioningFindByID(ctx context.Context, versioningID string) (VersioningInterface, error) {
 	if store.versioningStore == nil {
 		return nil, nil
 	}
 	return store.versioningStore.VersionFindByID(store.toQueryableContext(ctx), versioningID)
 }
 
-func (store *store) VersioningList(ctx context.Context, query VersioningQueryInterface) ([]VersioningInterface, error) {
+func (store *storeImplementation) VersioningList(ctx context.Context, query VersioningQueryInterface) ([]VersioningInterface, error) {
 	if store.versioningStore == nil {
 		return []VersioningInterface{}, nil
 	}
@@ -144,21 +144,21 @@ func (store *store) VersioningList(ctx context.Context, query VersioningQueryInt
 	return newList, nil
 }
 
-func (store *store) VersioningSoftDelete(ctx context.Context, versioning VersioningInterface) error {
+func (store *storeImplementation) VersioningSoftDelete(ctx context.Context, versioning VersioningInterface) error {
 	if store.versioningStore == nil {
 		return nil
 	}
 	return store.versioningStore.VersionSoftDelete(store.toQueryableContext(ctx), versioning)
 }
 
-func (store *store) VersioningSoftDeleteByID(ctx context.Context, id string) error {
+func (store *storeImplementation) VersioningSoftDeleteByID(ctx context.Context, id string) error {
 	if store.versioningStore == nil {
 		return nil
 	}
 	return store.versioningStore.VersionSoftDeleteByID(store.toQueryableContext(ctx), id)
 }
 
-func (store *store) VersioningUpdate(ctx context.Context, version VersioningInterface) error {
+func (store *storeImplementation) VersioningUpdate(ctx context.Context, version VersioningInterface) error {
 	if store.versioningStore == nil {
 		return nil
 	}

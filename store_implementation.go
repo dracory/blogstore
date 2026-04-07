@@ -16,9 +16,9 @@ import (
 	"github.com/samber/lo"
 )
 
-var _ StoreInterface = (*store)(nil) // verify it extends the interface
+var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
 
-type store struct {
+type storeImplementation struct {
 	postTableName      string
 	db                 *sql.DB
 	dbDriverName       string
@@ -31,7 +31,7 @@ type store struct {
 }
 
 // AutoMigrate auto migrate
-func (store *store) AutoMigrate() error {
+func (store *storeImplementation) AutoMigrate() error {
 	sql, err := store.sqlCreateTable()
 	if err != nil {
 		return err
@@ -55,17 +55,17 @@ func (store *store) AutoMigrate() error {
 	return nil
 }
 
-func (st *store) VersioningEnabled() bool {
+func (st *storeImplementation) VersioningEnabled() bool {
 	return st.versioningEnabled
 }
 
 // EnableDebug - enables the debug option
-func (st *store) EnableDebug(debug bool) StoreInterface {
+func (st *storeImplementation) EnableDebug(debug bool) StoreInterface {
 	st.debugEnabled = debug
 	return st
 }
 
-func (store *store) PostCreate(ctx context.Context, post PostInterface) error {
+func (store *storeImplementation) PostCreate(ctx context.Context, post PostInterface) error {
 	post.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 	post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
@@ -99,7 +99,7 @@ func (store *store) PostCreate(ctx context.Context, post PostInterface) error {
 	return nil
 }
 
-func (store *store) PostCount(ctx context.Context, options PostQueryOptions) (int64, error) {
+func (store *storeImplementation) PostCount(ctx context.Context, options PostQueryOptions) (int64, error) {
 	options.CountOnly = true
 	q := store.postQuery(options)
 
@@ -142,13 +142,13 @@ func (store *store) PostCount(ctx context.Context, options PostQueryOptions) (in
 	return i, nil
 }
 
-func (store *store) PostTrash(ctx context.Context, post PostInterface) error {
+func (store *storeImplementation) PostTrash(ctx context.Context, post PostInterface) error {
 	post.SetStatus(POST_STATUS_TRASH)
 
 	return store.PostUpdate(ctx, post)
 }
 
-func (store *store) PostDelete(ctx context.Context, post PostInterface) error {
+func (store *storeImplementation) PostDelete(ctx context.Context, post PostInterface) error {
 	if post == nil {
 		return errors.New("post is nil")
 	}
@@ -156,7 +156,7 @@ func (store *store) PostDelete(ctx context.Context, post PostInterface) error {
 	return store.PostDeleteByID(ctx, post.ID())
 }
 
-func (store *store) PostDeleteByID(ctx context.Context, id string) error {
+func (store *storeImplementation) PostDeleteByID(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.New("post id is empty")
 	}
@@ -180,7 +180,7 @@ func (store *store) PostDeleteByID(ctx context.Context, id string) error {
 	return err
 }
 
-func (store *store) PostFindByID(ctx context.Context, id string) (PostInterface, error) {
+func (store *storeImplementation) PostFindByID(ctx context.Context, id string) (PostInterface, error) {
 	if id == "" {
 		return nil, errors.New("post id is empty")
 	}
@@ -224,7 +224,7 @@ func (store *store) PostFindByID(ctx context.Context, id string) (PostInterface,
 	return nil, nil
 }
 
-func (st *store) PostFindPrevious(post PostInterface) (PostInterface, error) {
+func (st *storeImplementation) PostFindPrevious(post PostInterface) (PostInterface, error) {
 	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtLessThan: post.CreatedAtCarbon().ToDateTimeString(),
 		Limit:             1,
@@ -241,7 +241,7 @@ func (st *store) PostFindPrevious(post PostInterface) (PostInterface, error) {
 	return nil, nil
 }
 
-func (st *store) PostFindNext(post PostInterface) (PostInterface, error) {
+func (st *storeImplementation) PostFindNext(post PostInterface) (PostInterface, error) {
 	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtGreaterThan: post.CreatedAtCarbon().ToDateTimeString(),
 		Limit:                1,
@@ -258,7 +258,7 @@ func (st *store) PostFindNext(post PostInterface) (PostInterface, error) {
 	return nil, nil
 }
 
-func (st *store) PostList(ctx context.Context, options PostQueryOptions) ([]PostInterface, error) {
+func (st *storeImplementation) PostList(ctx context.Context, options PostQueryOptions) ([]PostInterface, error) {
 	q := st.postQuery(options)
 
 	sqlStr, sqlParams, errSql := q.Select().
@@ -293,7 +293,7 @@ func (st *store) PostList(ctx context.Context, options PostQueryOptions) ([]Post
 	return list, nil
 }
 
-func (st *store) PostSoftDelete(ctx context.Context, post PostInterface) error {
+func (st *storeImplementation) PostSoftDelete(ctx context.Context, post PostInterface) error {
 	if post == nil {
 		return errors.New("post is nil")
 	}
@@ -303,7 +303,7 @@ func (st *store) PostSoftDelete(ctx context.Context, post PostInterface) error {
 	return st.PostUpdate(ctx, post)
 }
 
-func (st *store) PostSoftDeleteByID(ctx context.Context, id string) error {
+func (st *storeImplementation) PostSoftDeleteByID(ctx context.Context, id string) error {
 	post, err := st.PostFindByID(ctx, id)
 
 	if err != nil {
@@ -313,7 +313,7 @@ func (st *store) PostSoftDeleteByID(ctx context.Context, id string) error {
 	return st.PostSoftDelete(ctx, post)
 }
 
-func (st *store) PostUpdate(ctx context.Context, post PostInterface) error {
+func (st *storeImplementation) PostUpdate(ctx context.Context, post PostInterface) error {
 	if post == nil {
 		return errors.New("order is nil")
 	}
@@ -355,7 +355,7 @@ func (st *store) PostUpdate(ctx context.Context, post PostInterface) error {
 	return err
 }
 
-func (st *store) postQuery(options PostQueryOptions) *goqu.SelectDataset {
+func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 	q := goqu.Dialect(st.dbDriverName).
 		From(st.postTableName)
 

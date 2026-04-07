@@ -343,10 +343,10 @@ func TestStorePostFindPreviousAndNext(t *testing.T) {
 		t.Fatal("unexpected error:", err)
 	}
 
-	// need concrete *store to call navigation helpers
-	store, ok := storeIface.(*store)
+	// need concrete *storeImplementation to call navigation helpers
+	store, ok := storeIface.(*storeImplementation)
 	if !ok {
-		t.Fatalf("NewStore did not return *store concrete type")
+		t.Fatalf("NewStore did not return *storeImplementation concrete type")
 	}
 
 	ctx := context.Background()

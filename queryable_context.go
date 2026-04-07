@@ -6,7 +6,7 @@ import (
 	"github.com/dracory/database"
 )
 
-func (store *store) toQueryableContext(ctx context.Context) database.QueryableContext {
+func (store *storeImplementation) toQueryableContext(ctx context.Context) database.QueryableContext {
 	if database.IsQueryableContext(ctx) {
 		return ctx.(database.QueryableContext)
 	}
