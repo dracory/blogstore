@@ -124,6 +124,10 @@ func (st *storeImplementation) sqlCreateTaxonomyTable() (string, error) {
 			Name: COLUMN_CREATED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).
+		Column(sb.Column{
+			Name: COLUMN_UPDATED_AT,
+			Type: sb.COLUMN_TYPE_DATETIME,
+		}).
 		CreateIfNotExists()
 
 	return sql, err
@@ -171,6 +175,10 @@ func (st *storeImplementation) sqlCreateTermTable() (string, error) {
 			Name: COLUMN_CREATED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).
+		Column(sb.Column{
+			Name: COLUMN_UPDATED_AT,
+			Type: sb.COLUMN_TYPE_DATETIME,
+		}).
 		CreateIfNotExists()
 
 	return sql, err
@@ -202,6 +210,10 @@ func (st *storeImplementation) sqlCreateTermRelationTable() (string, error) {
 		}).
 		Column(sb.Column{
 			Name: COLUMN_CREATED_AT,
+			Type: sb.COLUMN_TYPE_DATETIME,
+		}).
+		Column(sb.Column{
+			Name: COLUMN_UPDATED_AT,
 			Type: sb.COLUMN_TYPE_DATETIME,
 		}).
 		CreateIfNotExists()

@@ -241,12 +241,23 @@ func (store *storeImplementation) taxonomyQuery(options TaxonomyQueryOptions) *g
 	}
 
 	if options.Search != "" {
-		q = q.Where(
-			goqu.Or(
+		var searchExpr goqu.Expression
+		switch store.dbDriverName {
+		case "sqlite3", "sqlite":
+			// SQLite: use LOWER() for case-insensitive matching
+			searchPattern := "%" + options.Search + "%"
+			searchExpr = goqu.Or(
+				goqu.L("LOWER(?)", goqu.C(COLUMN_NAME)).Like(goqu.L("LOWER(?)", searchPattern)),
+				goqu.L("LOWER(?)", goqu.C(COLUMN_DESCRIPTION)).Like(goqu.L("LOWER(?)", searchPattern)),
+			)
+		default:
+			// PostgreSQL, MySQL: use ILike
+			searchExpr = goqu.Or(
 				goqu.C(COLUMN_NAME).ILike("%"+options.Search+"%"),
 				goqu.C(COLUMN_DESCRIPTION).ILike("%"+options.Search+"%"),
-			),
-		)
+			)
+		}
+		q = q.Where(searchExpr)
 	}
 
 	if !options.CountOnly {
@@ -526,13 +537,25 @@ func (store *storeImplementation) termQuery(options TermQueryOptions) *goqu.Sele
 	}
 
 	if options.Search != "" {
-		q = q.Where(
-			goqu.Or(
+		var searchExpr goqu.Expression
+		switch store.dbDriverName {
+		case "sqlite3", "sqlite":
+			// SQLite: use LOWER() for case-insensitive matching
+			searchPattern := "%" + options.Search + "%"
+			searchExpr = goqu.Or(
+				goqu.L("LOWER(?)", goqu.C(COLUMN_NAME)).Like(goqu.L("LOWER(?)", searchPattern)),
+				goqu.L("LOWER(?)", goqu.C(COLUMN_DESCRIPTION)).Like(goqu.L("LOWER(?)", searchPattern)),
+				goqu.C(COLUMN_SLUG).Eq(options.Search),
+			)
+		default:
+			// PostgreSQL, MySQL: use ILike
+			searchExpr = goqu.Or(
 				goqu.C(COLUMN_NAME).ILike("%"+options.Search+"%"),
 				goqu.C(COLUMN_DESCRIPTION).ILike("%"+options.Search+"%"),
 				goqu.C(COLUMN_SLUG).Eq(options.Search),
-			),
-		)
+			)
+		}
+		q = q.Where(searchExpr)
 	}
 
 	if !options.CountOnly {
