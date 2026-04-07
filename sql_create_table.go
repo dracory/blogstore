@@ -4,8 +4,8 @@ import (
 	"github.com/dracory/sb"
 )
 
-// SQLCreateTable returns a SQL string for creating the blog_post table
-func (st *storeImplementation) sqlCreateTable() (string, error) {
+// sqlCreatePostTable returns a SQL string for creating the blog_post table
+func (st *storeImplementation) sqlCreatePostTable() (string, error) {
 	sql, err := sb.NewBuilder(sb.DatabaseDriverName(st.db)).
 		Table(st.postTableName).
 		Column(sb.Column{

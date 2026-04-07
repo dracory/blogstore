@@ -38,7 +38,7 @@ type storeImplementation struct {
 // AutoMigrate auto migrate
 func (store *storeImplementation) AutoMigrate() error {
 	// Create main post table
-	sql, err := store.sqlCreateTable()
+	sql, err := store.sqlCreatePostTable()
 	if err != nil {
 		return err
 	}
