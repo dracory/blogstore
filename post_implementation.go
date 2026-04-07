@@ -13,8 +13,8 @@ import (
 
 // var _ dataobject.DataObjectFluentInterface = (*Post)(nil) // verify it extends the data object interface
 
-func NewPost() *Post {
-	o := &Post{}
+func NewPost() PostInterface {
+	o := &postImplementation{}
 	o.SetID(GenerateShortID()).
 		SetAuthorID("").
 		SetCanonicalURL("").
@@ -38,72 +38,72 @@ func NewPost() *Post {
 	return o
 }
 
-func NewPostFromExistingData(data map[string]string) *Post {
-	o := &Post{}
+func NewPostFromExistingData(data map[string]string) PostInterface {
+	o := &postImplementation{}
 	o.Hydrate(data)
 	return o
 }
 
-type Post struct {
+type postImplementation struct {
 	dataobject.DataObject
 }
 
 // ================================== METHODS ==================================
-func (o *Post) Slug() string {
+func (o *postImplementation) Slug() string {
 	return str.Slugify(o.Title(), '-')
 }
 
-func (o *Post) Editor() string {
+func (o *postImplementation) Editor() string {
 	return o.Meta("editor")
 }
 
-func (o *Post) SetEditor(editor string) PostInterface {
+func (o *postImplementation) SetEditor(editor string) PostInterface {
 	o.SetMeta("editor", editor)
 	return o
 }
 
-func (o *Post) ContentType() string {
+func (o *postImplementation) ContentType() string {
 	return o.Meta("content_type")
 }
 
-func (o *Post) SetContentType(contentType string) PostInterface {
+func (o *postImplementation) SetContentType(contentType string) PostInterface {
 	o.SetMeta("content_type", contentType)
 	return o
 }
 
-func (o *Post) IsDraft() bool {
+func (o *postImplementation) IsDraft() bool {
 	return o.Status() == POST_STATUS_DRAFT
 }
 
-func (o *Post) IsPublished() bool {
+func (o *postImplementation) IsPublished() bool {
 	return o.Status() == POST_STATUS_PUBLISHED
 }
 
-func (o *Post) IsContentMarkdown() bool {
+func (o *postImplementation) IsContentMarkdown() bool {
 	return o.ContentType() == POST_CONTENT_TYPE_MARKDOWN
 }
 
-func (o *Post) IsContentHtml() bool {
+func (o *postImplementation) IsContentHtml() bool {
 	return o.ContentType() == POST_CONTENT_TYPE_HTML
 }
 
-func (o *Post) IsContentPlainText() bool {
+func (o *postImplementation) IsContentPlainText() bool {
 	return o.ContentType() == POST_CONTENT_TYPE_PLAIN_TEXT
 }
 
-func (o *Post) IsContentBlocks() bool {
+func (o *postImplementation) IsContentBlocks() bool {
 	return o.ContentType() == POST_CONTENT_TYPE_BLOCKS
 }
 
-func (o *Post) IsTrashed() bool {
+func (o *postImplementation) IsTrashed() bool {
 	return o.Status() == POST_STATUS_TRASH
 }
 
-func (o *Post) IsUnpublished() bool {
+func (o *postImplementation) IsUnpublished() bool {
 	return !o.IsPublished()
 }
 
-func (o *Post) MarshalToVersioning() (string, error) {
+func (o *postImplementation) MarshalToVersioning() (string, error) {
 	versionedData := map[string]string{}
 
 	for k, v := range o.Data() {
@@ -122,7 +122,7 @@ func (o *Post) MarshalToVersioning() (string, error) {
 	return string(b), nil
 }
 
-func (o *Post) UnmarshalFromVersioning(content string) error {
+func (o *postImplementation) UnmarshalFromVersioning(content string) error {
 	versionedData := map[string]string{}
 	if err := json.Unmarshal([]byte(content), &versionedData); err != nil {
 		return err
@@ -146,7 +146,7 @@ func (o *Post) UnmarshalFromVersioning(content string) error {
 
 // ============================ SETTERS AND GETTERS ============================
 
-func (o *Post) AddMetas(metas map[string]string) error {
+func (o *postImplementation) AddMetas(metas map[string]string) error {
 	currentMetas, err := o.Metas()
 
 	if err != nil {
@@ -160,43 +160,43 @@ func (o *Post) AddMetas(metas map[string]string) error {
 	return o.SetMetas(currentMetas)
 }
 
-func (o *Post) AuthorID() string {
+func (o *postImplementation) AuthorID() string {
 	return o.Get(COLUMN_AUTHOR_ID)
 }
 
-func (o *Post) SetAuthorID(authorID string) PostInterface {
+func (o *postImplementation) SetAuthorID(authorID string) PostInterface {
 	o.Set(COLUMN_AUTHOR_ID, authorID)
 	return o
 }
 
-func (o *Post) CanonicalURL() string {
+func (o *postImplementation) CanonicalURL() string {
 	return o.Get(COLUMN_CANONICAL_URL)
 }
 
-func (o *Post) SetCanonicalURL(canonicalURL string) PostInterface {
+func (o *postImplementation) SetCanonicalURL(canonicalURL string) PostInterface {
 	o.Set(COLUMN_CANONICAL_URL, canonicalURL)
 	return o
 }
 
-func (o *Post) Content() string {
+func (o *postImplementation) Content() string {
 	return o.Get(COLUMN_CONTENT)
 }
 
-func (o *Post) SetContent(content string) PostInterface {
+func (o *postImplementation) SetContent(content string) PostInterface {
 	o.Set(COLUMN_CONTENT, content)
 	return o
 }
 
-func (o *Post) CreatedAt() string {
+func (o *postImplementation) CreatedAt() string {
 	return o.Get(COLUMN_CREATED_AT)
 }
 
-func (o *Post) SetCreatedAt(createdAt string) PostInterface {
+func (o *postImplementation) SetCreatedAt(createdAt string) PostInterface {
 	o.Set(COLUMN_CREATED_AT, createdAt)
 	return o
 }
 
-func (o *Post) CreatedAtCarbon() *carbon.Carbon {
+func (o *postImplementation) CreatedAtCarbon() *carbon.Carbon {
 	createdAt := o.CreatedAt()
 	if createdAt == "" {
 		return carbon.Parse(sb.NULL_DATETIME)
@@ -204,7 +204,7 @@ func (o *Post) CreatedAtCarbon() *carbon.Carbon {
 	return carbon.Parse(createdAt)
 }
 
-func (o *Post) CreatedAtTime() time.Time {
+func (o *postImplementation) CreatedAtTime() time.Time {
 	createdAt := o.CreatedAt()
 	if createdAt == "" {
 		return time.Time{}
@@ -212,11 +212,11 @@ func (o *Post) CreatedAtTime() time.Time {
 	return carbon.Parse(createdAt).StdTime()
 }
 
-func (o *Post) SoftDeletedAt() string {
+func (o *postImplementation) SoftDeletedAt() string {
 	return o.Get(COLUMN_SOFT_DELETED_AT)
 }
 
-func (o *Post) SoftDeletedAtCarbon() *carbon.Carbon {
+func (o *postImplementation) SoftDeletedAtCarbon() *carbon.Carbon {
 	deletedAt := o.SoftDeletedAt()
 	if deletedAt == "" {
 		return carbon.Parse(sb.NULL_DATETIME)
@@ -224,51 +224,51 @@ func (o *Post) SoftDeletedAtCarbon() *carbon.Carbon {
 	return carbon.Parse(deletedAt)
 }
 
-func (o *Post) SetSoftDeletedAt(deletedAt string) PostInterface {
+func (o *postImplementation) SetSoftDeletedAt(deletedAt string) PostInterface {
 	o.Set(COLUMN_SOFT_DELETED_AT, deletedAt)
 	return o
 }
 
-func (o *Post) Featured() string {
+func (o *postImplementation) Featured() string {
 	return o.Get(COLUMN_FEATURED)
 }
 
-func (o *Post) SetFeatured(featured string) PostInterface {
+func (o *postImplementation) SetFeatured(featured string) PostInterface {
 	o.Set(COLUMN_FEATURED, featured)
 	return o
 }
 
-func (o *Post) ID() string {
+func (o *postImplementation) ID() string {
 	return o.Get(COLUMN_ID)
 }
-func (o *Post) SetID(id string) PostInterface {
+func (o *postImplementation) SetID(id string) PostInterface {
 	o.Set(COLUMN_ID, id)
 	return o
 }
 
-func (o *Post) ImageUrl() string {
+func (o *postImplementation) ImageUrl() string {
 	return o.Get(COLUMN_IMAGE_URL)
 }
 
-func (o *Post) SetImageUrl(imageURL string) PostInterface {
+func (o *postImplementation) SetImageUrl(imageURL string) PostInterface {
 	o.Set(COLUMN_IMAGE_URL, imageURL)
 	return o
 }
 
-func (o *Post) ImageUrlOrDefault() string {
+func (o *postImplementation) ImageUrlOrDefault() string {
 	return lo.Ternary(o.ImageUrl() == "", BlogNoImageUrl(), o.ImageUrl())
 }
 
-func (o *Post) Memo() string {
+func (o *postImplementation) Memo() string {
 	return o.Get(COLUMN_MEMO)
 }
 
-func (o *Post) SetMemo(memo string) PostInterface {
+func (o *postImplementation) SetMemo(memo string) PostInterface {
 	o.Set(COLUMN_MEMO, memo)
 	return o
 }
 
-func (o *Post) Meta(key string) string {
+func (o *postImplementation) Meta(key string) string {
 	metas, err := o.Metas()
 
 	if err != nil {
@@ -278,7 +278,7 @@ func (o *Post) Meta(key string) string {
 	return lo.ValueOr(metas, key, "")
 }
 
-func (o *Post) SetMeta(key string, value string) error {
+func (o *postImplementation) SetMeta(key string, value string) error {
 	metas, err := o.Metas()
 
 	if err != nil {
@@ -289,7 +289,7 @@ func (o *Post) SetMeta(key string, value string) error {
 	return o.SetMetas(metas)
 }
 
-func (o *Post) Metas() (map[string]string, error) {
+func (o *postImplementation) Metas() (map[string]string, error) {
 	metasStr := o.Get(COLUMN_METAS)
 
 	if metasStr == "" {
@@ -305,7 +305,7 @@ func (o *Post) Metas() (map[string]string, error) {
 	return metasJson, nil
 }
 
-func (o *Post) SetMetas(metas map[string]string) error {
+func (o *postImplementation) SetMetas(metas map[string]string) error {
 	mapString, err := json.Marshal(metas)
 	if err != nil {
 		return err
@@ -314,43 +314,43 @@ func (o *Post) SetMetas(metas map[string]string) error {
 	return nil
 }
 
-func (o *Post) MetaDescription() string {
+func (o *postImplementation) MetaDescription() string {
 	return o.Get(COLUMN_META_DESCRIPTION)
 }
 
-func (o *Post) SetMetaDescription(metaDescription string) PostInterface {
+func (o *postImplementation) SetMetaDescription(metaDescription string) PostInterface {
 	o.Set(COLUMN_META_DESCRIPTION, metaDescription)
 	return o
 }
 
-func (o *Post) MetaKeywords() string {
+func (o *postImplementation) MetaKeywords() string {
 	return o.Get(COLUMN_META_KEYWORDS)
 }
 
-func (o *Post) SetMetaKeywords(metaKeywords string) PostInterface {
+func (o *postImplementation) SetMetaKeywords(metaKeywords string) PostInterface {
 	o.Set(COLUMN_META_KEYWORDS, metaKeywords)
 	return o
 }
 
-func (o *Post) MetaRobots() string {
+func (o *postImplementation) MetaRobots() string {
 	return o.Get(COLUMN_META_ROBOTS)
 }
 
-func (o *Post) SetMetaRobots(metaRobots string) PostInterface {
+func (o *postImplementation) SetMetaRobots(metaRobots string) PostInterface {
 	o.Set(COLUMN_META_ROBOTS, metaRobots)
 	return o
 }
 
-func (o *Post) PublishedAt() string {
+func (o *postImplementation) PublishedAt() string {
 	return o.Get(COLUMN_PUBLISHED_AT)
 }
 
-func (o *Post) SetPublishedAt(status string) PostInterface {
+func (o *postImplementation) SetPublishedAt(status string) PostInterface {
 	o.Set(COLUMN_PUBLISHED_AT, status)
 	return o
 }
 
-func (o *Post) PublishedAtCarbon() *carbon.Carbon {
+func (o *postImplementation) PublishedAtCarbon() *carbon.Carbon {
 	createdAt := o.PublishedAt()
 	if createdAt == "" {
 		return carbon.Parse(sb.NULL_DATETIME)
@@ -358,7 +358,7 @@ func (o *Post) PublishedAtCarbon() *carbon.Carbon {
 	return carbon.Parse(createdAt)
 }
 
-func (o *Post) PublishedAtTime() time.Time {
+func (o *postImplementation) PublishedAtTime() time.Time {
 	publishedAt := o.PublishedAt()
 	if publishedAt == "" {
 		return time.Time{}
@@ -366,38 +366,38 @@ func (o *Post) PublishedAtTime() time.Time {
 	return carbon.Parse(publishedAt).StdTime()
 }
 
-func (o *Post) Status() string {
+func (o *postImplementation) Status() string {
 	return o.Get(COLUMN_STATUS)
 }
 
-func (o *Post) SetStatus(status string) PostInterface {
+func (o *postImplementation) SetStatus(status string) PostInterface {
 	o.Set(COLUMN_STATUS, status)
 	return o
 }
 
-func (o *Post) Summary() string {
+func (o *postImplementation) Summary() string {
 	return o.Get(COLUMN_SUMMARY)
 }
 
-func (o *Post) SetSummary(summary string) PostInterface {
+func (o *postImplementation) SetSummary(summary string) PostInterface {
 	o.Set(COLUMN_SUMMARY, summary)
 	return o
 }
 
-func (o *Post) Title() string {
+func (o *postImplementation) Title() string {
 	return o.Get(COLUMN_TITLE)
 }
 
-func (o *Post) SetTitle(title string) PostInterface {
+func (o *postImplementation) SetTitle(title string) PostInterface {
 	o.Set(COLUMN_TITLE, title)
 	return o
 }
 
-func (o *Post) UpdatedAt() string {
+func (o *postImplementation) UpdatedAt() string {
 	return o.Get(COLUMN_UPDATED_AT)
 }
 
-func (o *Post) UpdatedAtCarbon() *carbon.Carbon {
+func (o *postImplementation) UpdatedAtCarbon() *carbon.Carbon {
 	updatedAt := o.UpdatedAt()
 	if updatedAt == "" {
 		return carbon.Parse(sb.NULL_DATETIME)
@@ -405,36 +405,36 @@ func (o *Post) UpdatedAtCarbon() *carbon.Carbon {
 	return carbon.Parse(updatedAt)
 }
 
-func (o *Post) SetUpdatedAt(updatedAt string) PostInterface {
+func (o *postImplementation) SetUpdatedAt(updatedAt string) PostInterface {
 	o.Set(COLUMN_UPDATED_AT, updatedAt)
 	return o
 }
 
-func (o *Post) Data() map[string]string {
+func (o *postImplementation) Data() map[string]string {
 	return o.DataObject.Data()
 }
 
-func (o *Post) DataChanged() map[string]string {
+func (o *postImplementation) DataChanged() map[string]string {
 	return o.DataObject.DataChanged()
 }
 
-func (o *Post) MarkAsNotDirty() {
+func (o *postImplementation) MarkAsNotDirty() {
 	o.DataObject.MarkAsNotDirty()
 }
 
-func (o *Post) Get(key string) string {
+func (o *postImplementation) Get(key string) string {
 	return o.DataObject.Get(key)
 }
 
-func (o *Post) Set(key string, value string) {
+func (o *postImplementation) Set(key string, value string) {
 	o.DataObject.Set(key, value)
 }
 
-func (o *Post) Hydrate(data map[string]string) {
+func (o *postImplementation) Hydrate(data map[string]string) {
 	o.DataObject.Hydrate(data)
 }
 
-func (o *Post) IsDirty() bool {
+func (o *postImplementation) IsDirty() bool {
 	return o.DataObject.IsDirty()
 }
 

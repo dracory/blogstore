@@ -114,5 +114,5 @@ type PostInterface interface {
 	IsDirty() bool
 }
 
-// Ensure Post implements PostInterface
-var _ PostInterface = (*Post)(nil)
+// Ensure postImplementation implements PostInterface
+var _ PostInterface = (*postImplementation)(nil)
