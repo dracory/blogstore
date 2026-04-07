@@ -65,7 +65,7 @@ func (st *store) EnableDebug(debug bool) StoreInterface {
 	return st
 }
 
-func (store *store) PostCreate(ctx context.Context, post *Post) error {
+func (store *store) PostCreate(ctx context.Context, post PostInterface) error {
 	post.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 	post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
@@ -142,13 +142,13 @@ func (store *store) PostCount(ctx context.Context, options PostQueryOptions) (in
 	return i, nil
 }
 
-func (store *store) PostTrash(ctx context.Context, post *Post) error {
+func (store *store) PostTrash(ctx context.Context, post PostInterface) error {
 	post.SetStatus(POST_STATUS_TRASH)
 
 	return store.PostUpdate(ctx, post)
 }
 
-func (store *store) PostDelete(ctx context.Context, post *Post) error {
+func (store *store) PostDelete(ctx context.Context, post PostInterface) error {
 	if post == nil {
 		return errors.New("post is nil")
 	}
@@ -180,7 +180,7 @@ func (store *store) PostDeleteByID(ctx context.Context, id string) error {
 	return err
 }
 
-func (store *store) PostFindByID(ctx context.Context, id string) (*Post, error) {
+func (store *store) PostFindByID(ctx context.Context, id string) (PostInterface, error) {
 	if id == "" {
 		return nil, errors.New("post id is empty")
 	}
@@ -199,7 +199,7 @@ func (store *store) PostFindByID(ctx context.Context, id string) (*Post, error) 
 	}
 
 	if len(list) > 0 {
-		return &list[0], nil
+		return list[0], nil
 	}
 
 	// If not found and ID looks shortened, try unshortening
@@ -216,7 +216,7 @@ func (store *store) PostFindByID(ctx context.Context, id string) (*Post, error) 
 			}
 
 			if len(list) > 0 {
-				return &list[0], nil
+				return list[0], nil
 			}
 		}
 	}
@@ -224,7 +224,7 @@ func (store *store) PostFindByID(ctx context.Context, id string) (*Post, error) 
 	return nil, nil
 }
 
-func (st *store) PostFindPrevious(post Post) (*Post, error) {
+func (st *store) PostFindPrevious(post PostInterface) (PostInterface, error) {
 	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtLessThan: post.CreatedAtCarbon().ToDateTimeString(),
 		Limit:             1,
@@ -235,13 +235,13 @@ func (st *store) PostFindPrevious(post Post) (*Post, error) {
 	}
 
 	if len(list) > 0 {
-		return &list[0], nil
+		return list[0], nil
 	}
 
 	return nil, nil
 }
 
-func (st *store) PostFindNext(post Post) (*Post, error) {
+func (st *store) PostFindNext(post PostInterface) (PostInterface, error) {
 	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtGreaterThan: post.CreatedAtCarbon().ToDateTimeString(),
 		Limit:                1,
@@ -252,13 +252,13 @@ func (st *store) PostFindNext(post Post) (*Post, error) {
 	}
 
 	if len(list) > 0 {
-		return &list[0], nil
+		return list[0], nil
 	}
 
 	return nil, nil
 }
 
-func (st *store) PostList(ctx context.Context, options PostQueryOptions) ([]Post, error) {
+func (st *store) PostList(ctx context.Context, options PostQueryOptions) ([]PostInterface, error) {
 	q := st.postQuery(options)
 
 	sqlStr, sqlParams, errSql := q.Select().
@@ -267,7 +267,7 @@ func (st *store) PostList(ctx context.Context, options PostQueryOptions) ([]Post
 
 	if errSql != nil {
 		log.Println(errSql)
-		return []Post{}, errSql
+		return []PostInterface{}, errSql
 	}
 
 	if st.debugEnabled {
@@ -280,20 +280,20 @@ func (st *store) PostList(ctx context.Context, options PostQueryOptions) ([]Post
 		sqlParams...,
 	)
 	if err != nil {
-		return []Post{}, err
+		return []PostInterface{}, err
 	}
 
-	list := []Post{}
+	list := []PostInterface{}
 
 	lo.ForEach(modelMaps, func(modelMap map[string]string, index int) {
 		model := NewPostFromExistingData(modelMap)
-		list = append(list, *model)
+		list = append(list, model)
 	})
 
 	return list, nil
 }
 
-func (st *store) PostSoftDelete(ctx context.Context, post *Post) error {
+func (st *store) PostSoftDelete(ctx context.Context, post PostInterface) error {
 	if post == nil {
 		return errors.New("post is nil")
 	}
@@ -313,7 +313,7 @@ func (st *store) PostSoftDeleteByID(ctx context.Context, id string) error {
 	return st.PostSoftDelete(ctx, post)
 }
 
-func (st *store) PostUpdate(ctx context.Context, post *Post) error {
+func (st *store) PostUpdate(ctx context.Context, post PostInterface) error {
 	if post == nil {
 		return errors.New("order is nil")
 	}

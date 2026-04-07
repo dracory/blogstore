@@ -182,7 +182,7 @@ func TestStorePostListAndCount(t *testing.T) {
 	ctx := context.Background()
 
 	// create multiple posts with different statuses
-	posts := []*Post{
+	posts := []PostInterface{
 		NewPost().SetTitle("Post 1").SetStatus(POST_STATUS_PUBLISHED),
 		NewPost().SetTitle("Post 2").SetStatus(POST_STATUS_UNPUBLISHED),
 		NewPost().SetTitle("Post 3").SetStatus(POST_STATUS_DRAFT),
@@ -356,7 +356,7 @@ func TestStorePostFindPreviousAndNext(t *testing.T) {
 	p2 := NewPost().SetTitle("Second")
 	p3 := NewPost().SetTitle("Third")
 
-	for _, p := range []*Post{p1, p2, p3} {
+	for _, p := range []PostInterface{p1, p2, p3} {
 		if err := store.PostCreate(ctx, p); err != nil {
 			t.Fatalf("PostCreate() error = %v, want nil", err)
 		}
@@ -385,7 +385,7 @@ func TestStorePostFindPreviousAndNext(t *testing.T) {
 		t.Fatalf("PostFindByID() returned nil for middle post")
 	}
 
-	prev, err := store.PostFindPrevious(*mid)
+	prev, err := store.PostFindPrevious(mid)
 	if err != nil {
 		t.Fatalf("PostFindPrevious() error = %v, want nil", err)
 	}
@@ -396,7 +396,7 @@ func TestStorePostFindPreviousAndNext(t *testing.T) {
 		t.Errorf("PostFindPrevious() Title = %q, want %q", prev.Title(), "First")
 	}
 
-	next, err := store.PostFindNext(*mid)
+	next, err := store.PostFindNext(mid)
 	if err != nil {
 		t.Fatalf("PostFindNext() error = %v, want nil", err)
 	}
@@ -433,7 +433,7 @@ func TestStorePostListSearchOrderingAndWithDeleted(t *testing.T) {
 		SetTitle("Irrelevant").
 		SetContent("Nothing to see here")
 
-	for _, p := range []*Post{p1, p2, p3} {
+	for _, p := range []PostInterface{p1, p2, p3} {
 		if err := store.PostCreate(ctx, p); err != nil {
 			t.Fatalf("PostCreate() error = %v, want nil", err)
 		}

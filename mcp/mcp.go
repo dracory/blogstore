@@ -383,7 +383,7 @@ func (m *MCP) dispatchTool(ctx context.Context, toolName string, args map[string
 	}
 }
 
-func postToMap(post *blogstore.Post) map[string]string {
+func postToMap(post blogstore.PostInterface) map[string]string {
 	if post == nil {
 		return map[string]string{}
 	}
@@ -538,7 +538,7 @@ func (m *MCP) toolPostList(ctx context.Context, args map[string]any) (string, er
 	items := make([]map[string]string, 0, len(list))
 	for i := range list {
 		post := list[i]
-		items = append(items, postToMap(&post))
+		items = append(items, postToMap(post))
 	}
 
 	b, _ := json.Marshal(map[string]any{"items": items})
@@ -638,7 +638,7 @@ func (m *MCP) toolPostVersions(ctx context.Context, args map[string]any) (string
 
 func (m *MCP) toolPostUpsert(ctx context.Context, args map[string]any) (string, error) {
 	id := argString(args, "id")
-	var post *blogstore.Post
+	var post blogstore.PostInterface
 	var err error
 	isUpdate := false
 

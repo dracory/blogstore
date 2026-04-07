@@ -8,15 +8,15 @@ type StoreInterface interface {
 	VersioningEnabled() bool
 
 	PostCount(ctx context.Context, options PostQueryOptions) (int64, error)
-	PostCreate(ctx context.Context, post *Post) error
-	PostDelete(ctx context.Context, post *Post) error
+	PostCreate(ctx context.Context, post PostInterface) error
+	PostDelete(ctx context.Context, post PostInterface) error
 	PostDeleteByID(ctx context.Context, postID string) error
-	PostFindByID(ctx context.Context, id string) (*Post, error)
-	PostList(ctx context.Context, options PostQueryOptions) ([]Post, error)
-	PostSoftDelete(ctx context.Context, post *Post) error
+	PostFindByID(ctx context.Context, id string) (PostInterface, error)
+	PostList(ctx context.Context, options PostQueryOptions) ([]PostInterface, error)
+	PostSoftDelete(ctx context.Context, post PostInterface) error
 	PostSoftDeleteByID(ctx context.Context, postID string) error
-	PostTrash(ctx context.Context, post *Post) error
-	PostUpdate(ctx context.Context, post *Post) error
+	PostTrash(ctx context.Context, post PostInterface) error
+	PostUpdate(ctx context.Context, post PostInterface) error
 
 	// Versioning
 	VersioningCreate(ctx context.Context, versioning VersioningInterface) error

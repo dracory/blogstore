@@ -57,7 +57,7 @@ func (o *Post) Editor() string {
 	return o.Meta("editor")
 }
 
-func (o *Post) SetEditor(editor string) *Post {
+func (o *Post) SetEditor(editor string) PostInterface {
 	o.SetMeta("editor", editor)
 	return o
 }
@@ -66,7 +66,7 @@ func (o *Post) ContentType() string {
 	return o.Meta("content_type")
 }
 
-func (o *Post) SetContentType(contentType string) *Post {
+func (o *Post) SetContentType(contentType string) PostInterface {
 	o.SetMeta("content_type", contentType)
 	return o
 }
@@ -164,7 +164,7 @@ func (o *Post) AuthorID() string {
 	return o.Get(COLUMN_AUTHOR_ID)
 }
 
-func (o *Post) SetAuthorID(authorID string) *Post {
+func (o *Post) SetAuthorID(authorID string) PostInterface {
 	o.Set(COLUMN_AUTHOR_ID, authorID)
 	return o
 }
@@ -173,7 +173,7 @@ func (o *Post) CanonicalURL() string {
 	return o.Get(COLUMN_CANONICAL_URL)
 }
 
-func (o *Post) SetCanonicalURL(canonicalURL string) *Post {
+func (o *Post) SetCanonicalURL(canonicalURL string) PostInterface {
 	o.Set(COLUMN_CANONICAL_URL, canonicalURL)
 	return o
 }
@@ -182,7 +182,7 @@ func (o *Post) Content() string {
 	return o.Get(COLUMN_CONTENT)
 }
 
-func (o *Post) SetContent(content string) *Post {
+func (o *Post) SetContent(content string) PostInterface {
 	o.Set(COLUMN_CONTENT, content)
 	return o
 }
@@ -191,7 +191,7 @@ func (o *Post) CreatedAt() string {
 	return o.Get(COLUMN_CREATED_AT)
 }
 
-func (o *Post) SetCreatedAt(createdAt string) *Post {
+func (o *Post) SetCreatedAt(createdAt string) PostInterface {
 	o.Set(COLUMN_CREATED_AT, createdAt)
 	return o
 }
@@ -224,7 +224,7 @@ func (o *Post) SoftDeletedAtCarbon() *carbon.Carbon {
 	return carbon.Parse(deletedAt)
 }
 
-func (o *Post) SetSoftDeletedAt(deletedAt string) *Post {
+func (o *Post) SetSoftDeletedAt(deletedAt string) PostInterface {
 	o.Set(COLUMN_SOFT_DELETED_AT, deletedAt)
 	return o
 }
@@ -233,7 +233,7 @@ func (o *Post) Featured() string {
 	return o.Get(COLUMN_FEATURED)
 }
 
-func (o *Post) SetFeatured(featured string) *Post {
+func (o *Post) SetFeatured(featured string) PostInterface {
 	o.Set(COLUMN_FEATURED, featured)
 	return o
 }
@@ -241,7 +241,7 @@ func (o *Post) SetFeatured(featured string) *Post {
 func (o *Post) ID() string {
 	return o.Get(COLUMN_ID)
 }
-func (o *Post) SetID(id string) *Post {
+func (o *Post) SetID(id string) PostInterface {
 	o.Set(COLUMN_ID, id)
 	return o
 }
@@ -250,7 +250,7 @@ func (o *Post) ImageUrl() string {
 	return o.Get(COLUMN_IMAGE_URL)
 }
 
-func (o *Post) SetImageUrl(imageURL string) *Post {
+func (o *Post) SetImageUrl(imageURL string) PostInterface {
 	o.Set(COLUMN_IMAGE_URL, imageURL)
 	return o
 }
@@ -263,7 +263,7 @@ func (o *Post) Memo() string {
 	return o.Get(COLUMN_MEMO)
 }
 
-func (o *Post) SetMemo(memo string) *Post {
+func (o *Post) SetMemo(memo string) PostInterface {
 	o.Set(COLUMN_MEMO, memo)
 	return o
 }
@@ -318,7 +318,7 @@ func (o *Post) MetaDescription() string {
 	return o.Get(COLUMN_META_DESCRIPTION)
 }
 
-func (o *Post) SetMetaDescription(metaDescription string) *Post {
+func (o *Post) SetMetaDescription(metaDescription string) PostInterface {
 	o.Set(COLUMN_META_DESCRIPTION, metaDescription)
 	return o
 }
@@ -327,7 +327,7 @@ func (o *Post) MetaKeywords() string {
 	return o.Get(COLUMN_META_KEYWORDS)
 }
 
-func (o *Post) SetMetaKeywords(metaKeywords string) *Post {
+func (o *Post) SetMetaKeywords(metaKeywords string) PostInterface {
 	o.Set(COLUMN_META_KEYWORDS, metaKeywords)
 	return o
 }
@@ -336,7 +336,7 @@ func (o *Post) MetaRobots() string {
 	return o.Get(COLUMN_META_ROBOTS)
 }
 
-func (o *Post) SetMetaRobots(metaRobots string) *Post {
+func (o *Post) SetMetaRobots(metaRobots string) PostInterface {
 	o.Set(COLUMN_META_ROBOTS, metaRobots)
 	return o
 }
@@ -345,7 +345,7 @@ func (o *Post) PublishedAt() string {
 	return o.Get(COLUMN_PUBLISHED_AT)
 }
 
-func (o *Post) SetPublishedAt(status string) *Post {
+func (o *Post) SetPublishedAt(status string) PostInterface {
 	o.Set(COLUMN_PUBLISHED_AT, status)
 	return o
 }
@@ -370,7 +370,7 @@ func (o *Post) Status() string {
 	return o.Get(COLUMN_STATUS)
 }
 
-func (o *Post) SetStatus(status string) *Post {
+func (o *Post) SetStatus(status string) PostInterface {
 	o.Set(COLUMN_STATUS, status)
 	return o
 }
@@ -379,7 +379,7 @@ func (o *Post) Summary() string {
 	return o.Get(COLUMN_SUMMARY)
 }
 
-func (o *Post) SetSummary(summary string) *Post {
+func (o *Post) SetSummary(summary string) PostInterface {
 	o.Set(COLUMN_SUMMARY, summary)
 	return o
 }
@@ -388,7 +388,7 @@ func (o *Post) Title() string {
 	return o.Get(COLUMN_TITLE)
 }
 
-func (o *Post) SetTitle(title string) *Post {
+func (o *Post) SetTitle(title string) PostInterface {
 	o.Set(COLUMN_TITLE, title)
 	return o
 }
@@ -405,9 +405,37 @@ func (o *Post) UpdatedAtCarbon() *carbon.Carbon {
 	return carbon.Parse(updatedAt)
 }
 
-func (o *Post) SetUpdatedAt(updatedAt string) *Post {
+func (o *Post) SetUpdatedAt(updatedAt string) PostInterface {
 	o.Set(COLUMN_UPDATED_AT, updatedAt)
 	return o
+}
+
+func (o *Post) Data() map[string]string {
+	return o.DataObject.Data()
+}
+
+func (o *Post) DataChanged() map[string]string {
+	return o.DataObject.DataChanged()
+}
+
+func (o *Post) MarkAsNotDirty() {
+	o.DataObject.MarkAsNotDirty()
+}
+
+func (o *Post) Get(key string) string {
+	return o.DataObject.Get(key)
+}
+
+func (o *Post) Set(key string, value string) {
+	o.DataObject.Set(key, value)
+}
+
+func (o *Post) Hydrate(data map[string]string) {
+	o.DataObject.Hydrate(data)
+}
+
+func (o *Post) IsDirty() bool {
+	return o.DataObject.IsDirty()
 }
 
 func BlogNoImageUrl() string {
