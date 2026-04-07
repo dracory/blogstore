@@ -6,6 +6,7 @@ type StoreInterface interface {
 	AutoMigrate() error
 	EnableDebug(debug bool) StoreInterface
 	VersioningEnabled() bool
+	TaxonomyEnabled() bool
 
 	PostCount(ctx context.Context, options PostQueryOptions) (int64, error)
 	PostCreate(ctx context.Context, post PostInterface) error

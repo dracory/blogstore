@@ -104,6 +104,10 @@ func (st *storeImplementation) VersioningEnabled() bool {
 	return st.versioningEnabled
 }
 
+func (st *storeImplementation) TaxonomyEnabled() bool {
+	return st.taxonomyEnabled
+}
+
 // EnableDebug - enables the debug option
 func (st *storeImplementation) EnableDebug(debug bool) StoreInterface {
 	st.debugEnabled = debug
