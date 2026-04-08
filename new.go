@@ -8,7 +8,7 @@ import (
 	"github.com/dracory/versionstore"
 )
 
-// NewStoreOptions define the options for creating a new block store
+// NewStoreOptions defines the configuration options for creating a new blog store.
 type NewStoreOptions struct {
 	PostTableName         string
 	TaxonomyTableName     string
@@ -26,7 +26,9 @@ type NewStoreOptions struct {
 	TaxonomyEnabled bool
 }
 
-// NewStore creates a new block store
+// NewStore creates a new blog store with the provided options.
+// It validates required fields, sets defaults for optional fields, and optionally runs AutoMigrate.
+// Returns a StoreInterface for interacting with posts, taxonomies, and terms.
 func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 	if opts.PostTableName == "" {
 		return nil, errors.New("blog store: PostTableName is required")
