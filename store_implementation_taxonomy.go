@@ -718,6 +718,219 @@ func (store *storeImplementation) PostInsertTermAt(ctx context.Context, postID s
 	return store.TermIncrementCount(ctx, termID)
 }
 
+// PostAddTerm appends a term to a post at the end of the sequence.
+// Automatically calculates the next available sequence number.
+// Returns an error if taxonomy features are not enabled.
+func (store *storeImplementation) PostAddTerm(ctx context.Context, postID string, termID string) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
+	if postID == "" || termID == "" {
+		return errors.New("post id and term id are required")
+	}
+
+	// Get the current max sequence for this post
+	maxSequence, err := store.postMaxSequence(ctx, postID)
+	if err != nil {
+		return err
+	}
+
+	// Insert at the next available sequence
+	return store.PostInsertTermAt(ctx, postID, termID, maxSequence+1)
+}
+
+// postMaxSequence returns the maximum sequence number for terms associated with a post.
+// Returns 0 if no terms are associated with the post.
+func (store *storeImplementation) postMaxSequence(ctx context.Context, postID string) (int, error) {
+	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
+		Select(goqu.MAX(COLUMN_SEQUENCE)).
+		From(store.termRelationTableName).
+		Where(goqu.C(COLUMN_POST_ID).Eq(postID)).
+		Prepared(true).
+		ToSQL()
+
+	if errSql != nil {
+		return 0, errSql
+	}
+
+	if store.debugEnabled {
+		log.Println(sqlStr)
+	}
+
+	var maxSeq interface{}
+	err := store.db.QueryRowContext(ctx, sqlStr, params...).Scan(&maxSeq)
+	if err != nil {
+		return 0, err
+	}
+
+	if maxSeq == nil {
+		return 0, nil
+	}
+
+	switch v := maxSeq.(type) {
+	case int64:
+		return int(v), nil
+	case int32:
+		return int(v), nil
+	case int:
+		return v, nil
+	case float64:
+		return int(v), nil
+	default:
+		return 0, nil
+	}
+}
+
+// PostMoveTermTo moves a term to a specific sequence position on a post.
+// Reorders existing terms by fetching all, reordering in memory, and updating one by one.
+// Returns an error if the term is not associated with the post.
+func (store *storeImplementation) PostMoveTermTo(ctx context.Context, postID string, termID string, sequence int) error {
+	if !store.taxonomyEnabled {
+		return errors.New("taxonomy is not enabled")
+	}
+	if postID == "" || termID == "" {
+		return errors.New("post id and term id are required")
+	}
+	if sequence < 0 {
+		return errors.New("sequence must be non-negative")
+	}
+
+	// Fetch all term relations for this post
+	relations, err := store.postTermList(ctx, postID)
+	if err != nil {
+		return err
+	}
+
+	// Find the term to move and its current position
+	var movingTerm TermRelationInterface
+	otherTerms := make([]TermRelationInterface, 0, len(relations))
+
+	for _, rel := range relations {
+		if rel.GetTermID() == termID {
+			movingTerm = rel
+		} else {
+			otherTerms = append(otherTerms, rel)
+		}
+	}
+
+	if movingTerm == nil {
+		return errors.New("term is not associated with this post")
+	}
+
+	// If already at the target position, nothing to do
+	if movingTerm.GetSequence() == sequence {
+		return nil
+	}
+
+	// Sort other terms by sequence (bubble sort for simplicity)
+	for i := 0; i < len(otherTerms); i++ {
+		for j := i + 1; j < len(otherTerms); j++ {
+			if otherTerms[i].GetSequence() > otherTerms[j].GetSequence() {
+				otherTerms[i], otherTerms[j] = otherTerms[j], otherTerms[i]
+			}
+		}
+	}
+
+	// Build new order: insert the moving term at the target sequence
+	newOrder := make([]TermRelationInterface, 0, len(relations))
+	currentSeq := 1
+
+	for _, term := range otherTerms {
+		// Skip the target position for the moving term
+		if currentSeq == sequence {
+			movingTerm.SetSequence(sequence)
+			newOrder = append(newOrder, movingTerm)
+			currentSeq++
+		}
+		// Skip the old position of the moving term
+		if term.GetTermID() != termID {
+			term.SetSequence(currentSeq)
+			newOrder = append(newOrder, term)
+			currentSeq++
+		}
+	}
+
+	// If target sequence is beyond current max, append at the end
+	if sequence >= currentSeq {
+		movingTerm.SetSequence(currentSeq)
+		newOrder = append(newOrder, movingTerm)
+	}
+
+	// Update all terms with their new sequences
+	for _, term := range newOrder {
+		if err := store.postTermUpdateSequence(ctx, postID, term.GetTermID(), term.GetSequence()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// postTermList returns all term relations for a post.
+func (store *storeImplementation) postTermList(ctx context.Context, postID string) ([]TermRelationInterface, error) {
+	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
+		Select(COLUMN_TERM_ID, COLUMN_SEQUENCE).
+		From(store.termRelationTableName).
+		Where(goqu.C(COLUMN_POST_ID).Eq(postID)).
+		Order(goqu.C(COLUMN_SEQUENCE).Asc()).
+		Prepared(true).
+		ToSQL()
+
+	if errSql != nil {
+		return nil, errSql
+	}
+
+	if store.debugEnabled {
+		log.Println(sqlStr)
+	}
+
+	rows, err := store.db.QueryContext(ctx, sqlStr, params...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var relations []TermRelationInterface
+	for rows.Next() {
+		var termID string
+		var sequence int
+		if err := rows.Scan(&termID, &sequence); err != nil {
+			return nil, err
+		}
+		rel := NewTermRelation().SetPostID(postID).SetTermID(termID).SetSequence(sequence)
+		relations = append(relations, rel)
+	}
+
+	return relations, rows.Err()
+}
+
+// postTermUpdateSequence updates the sequence of a specific term relation.
+func (store *storeImplementation) postTermUpdateSequence(ctx context.Context, postID, termID string, sequence int) error {
+	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
+		Update(store.termRelationTableName).
+		Set(goqu.Record{
+			COLUMN_SEQUENCE:   sequence,
+			COLUMN_UPDATED_AT: carbon.Now(carbon.UTC).ToDateTimeString(),
+		}).
+		Where(
+			goqu.C(COLUMN_POST_ID).Eq(postID),
+			goqu.C(COLUMN_TERM_ID).Eq(termID),
+		).
+		Prepared(true).
+		ToSQL()
+
+	if errSql != nil {
+		return errSql
+	}
+
+	if store.debugEnabled {
+		log.Println(sqlStr)
+	}
+
+	_, err := store.db.ExecContext(ctx, sqlStr, params...)
+	return err
+}
+
 // PostRemoveTerm removes the relationship between a post and a term.
 // Also decrements the term's count.
 // Returns an error if taxonomy features are not enabled.

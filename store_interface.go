@@ -133,8 +133,18 @@ type StoreInterface interface {
 
 	// Post-term relationship methods manage associations between posts and terms.
 
+	// PostAddTerm appends a term to a post (adds at the end of the sequence).
+	// Automatically calculates the next available sequence number.
+	// Returns an error if taxonomy features are not enabled.
+	PostAddTerm(ctx context.Context, postID string, termID string) error
+
 	// PostInsertTermAt associates a term with a post at the specified sequence/order.
 	PostInsertTermAt(ctx context.Context, postID string, termID string, sequence int) error
+
+	// PostMoveTermTo moves a term to a specific sequence position on a post.
+	// Reorders existing terms by pushing subsequent terms down (incrementing their sequence).
+	// Returns an error if the term is not associated with the post.
+	PostMoveTermTo(ctx context.Context, postID string, termID string, sequence int) error
 
 	// PostRemoveTerm dissociates a term from a post.
 	PostRemoveTerm(ctx context.Context, postID string, termID string) error

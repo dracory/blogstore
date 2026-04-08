@@ -639,3 +639,344 @@ func TestStoreTermHierarchyWithSequence(t *testing.T) {
 		t.Errorf("sub1.GetParentID() = %q, want %q", found1.GetParentID(), parent.GetID())
 	}
 }
+
+// ============================ POST-TERM SEQUENCE TESTS ============================
+
+// Helper function to get term sequences for a post
+func getPostTermSequences(t *testing.T, ctx context.Context, store StoreInterface, postID string) map[string]int {
+	t.Helper()
+
+	// Use the store's db directly to query term relations
+	sqlStr := "SELECT term_id, sequence FROM " + store.(*storeImplementation).termRelationTableName + " WHERE post_id = ? ORDER BY sequence"
+	rows, err := store.(*storeImplementation).db.QueryContext(ctx, sqlStr, postID)
+	if err != nil {
+		t.Fatalf("Failed to query term sequences: %v", err)
+	}
+	defer rows.Close()
+
+	sequences := make(map[string]int)
+	for rows.Next() {
+		var termID string
+		var seq int
+		if err := rows.Scan(&termID, &seq); err != nil {
+			t.Fatalf("Failed to scan row: %v", err)
+		}
+		sequences[termID] = seq
+	}
+	return sequences
+}
+
+func TestStorePostAddTerm(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		DB:                 db,
+		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
+	})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	ctx := context.Background()
+
+	// Create taxonomy and terms
+	taxonomy := NewTaxonomy().SetName("Tags").SetSlug("tag")
+	if err := store.TaxonomyCreate(ctx, taxonomy); err != nil {
+		t.Fatalf("TaxonomyCreate() error = %v, want nil", err)
+	}
+
+	term1 := NewTerm().SetTaxonomyID(taxonomy.GetID()).SetName("Go").SetSlug("go")
+	term2 := NewTerm().SetTaxonomyID(taxonomy.GetID()).SetName("Rust").SetSlug("rust")
+	term3 := NewTerm().SetTaxonomyID(taxonomy.GetID()).SetName("Python").SetSlug("python")
+
+	if err := store.TermCreate(ctx, term1); err != nil {
+		t.Fatalf("TermCreate() error = %v, want nil", err)
+	}
+	if err := store.TermCreate(ctx, term2); err != nil {
+		t.Fatalf("TermCreate() error = %v, want nil", err)
+	}
+	if err := store.TermCreate(ctx, term3); err != nil {
+		t.Fatalf("TermCreate() error = %v, want nil", err)
+	}
+
+	// Create a post
+	post := NewPost().SetTitle("Test Post").SetStatus(POST_STATUS_PUBLISHED)
+	if err := store.PostCreate(ctx, post); err != nil {
+		t.Fatalf("PostCreate() error = %v, want nil", err)
+	}
+
+	// Add first term - should get sequence 1 (max is 0, so 0+1)
+	if err := store.PostAddTerm(ctx, post.GetID(), term1.GetID()); err != nil {
+		t.Fatalf("PostAddTerm() error = %v, want nil", err)
+	}
+
+	seqs := getPostTermSequences(t, ctx, store, post.GetID())
+	if seqs[term1.GetID()] != 1 {
+		t.Errorf("First term sequence = %d, want 1", seqs[term1.GetID()])
+	}
+
+	// Add second term - should get sequence 2
+	if err := store.PostAddTerm(ctx, post.GetID(), term2.GetID()); err != nil {
+		t.Fatalf("PostAddTerm() error = %v, want nil", err)
+	}
+
+	seqs = getPostTermSequences(t, ctx, store, post.GetID())
+	if seqs[term2.GetID()] != 2 {
+		t.Errorf("Second term sequence = %d, want 2", seqs[term2.GetID()])
+	}
+
+	// Add third term - should get sequence 3
+	if err := store.PostAddTerm(ctx, post.GetID(), term3.GetID()); err != nil {
+		t.Fatalf("PostAddTerm() error = %v, want nil", err)
+	}
+
+	seqs = getPostTermSequences(t, ctx, store, post.GetID())
+	if seqs[term3.GetID()] != 3 {
+		t.Errorf("Third term sequence = %d, want 3", seqs[term3.GetID()])
+	}
+
+	// Verify all sequences are correct
+	if len(seqs) != 3 {
+		t.Errorf("Total term count = %d, want 3", len(seqs))
+	}
+
+	// Verify term counts were incremented
+	found, _ := store.TermFindByID(ctx, term1.GetID())
+	if found.GetCount() != 1 {
+		t.Errorf("term1 count = %d, want 1", found.GetCount())
+	}
+}
+
+func TestStorePostAddTermErrors(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		DB:                 db,
+		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
+	})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	ctx := context.Background()
+
+	// Test with empty post ID
+	if err := store.PostAddTerm(ctx, "", "term-id"); err == nil {
+		t.Error("PostAddTerm() with empty postID error = nil, want error")
+	}
+
+	// Test with empty term ID
+	if err := store.PostAddTerm(ctx, "post-id", ""); err == nil {
+		t.Error("PostAddTerm() with empty termID error = nil, want error")
+	}
+}
+
+func TestStorePostMoveTermTo(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		DB:                 db,
+		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
+	})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	ctx := context.Background()
+
+	// Create taxonomy and terms
+	taxonomy := NewTaxonomy().SetName("Tags").SetSlug("tag")
+	if err := store.TaxonomyCreate(ctx, taxonomy); err != nil {
+		t.Fatalf("TaxonomyCreate() error = %v, want nil", err)
+	}
+
+	termA := NewTerm().SetTaxonomyID(taxonomy.GetID()).SetName("A").SetSlug("a")
+	termB := NewTerm().SetTaxonomyID(taxonomy.GetID()).SetName("B").SetSlug("b")
+	termC := NewTerm().SetTaxonomyID(taxonomy.GetID()).SetName("C").SetSlug("c")
+	termD := NewTerm().SetTaxonomyID(taxonomy.GetID()).SetName("D").SetSlug("d")
+
+	for _, term := range []TermInterface{termA, termB, termC, termD} {
+		if err := store.TermCreate(ctx, term); err != nil {
+			t.Fatalf("TermCreate() error = %v, want nil", err)
+		}
+	}
+
+	// Create a post
+	post := NewPost().SetTitle("Test Post").SetStatus(POST_STATUS_PUBLISHED)
+	if err := store.PostCreate(ctx, post); err != nil {
+		t.Fatalf("PostCreate() error = %v, want nil", err)
+	}
+
+	// Add terms at specific positions: A(1), B(2), C(3), D(4)
+	for i, term := range []TermInterface{termA, termB, termC, termD} {
+		if err := store.PostInsertTermAt(ctx, post.GetID(), term.GetID(), i+1); err != nil {
+			t.Fatalf("PostInsertTermAt() error = %v, want nil", err)
+		}
+	}
+
+	// Move B (pos 2) to position 4 (move down)
+	// Expected: A(1), C(2), D(3), B(4)
+	if err := store.PostMoveTermTo(ctx, post.GetID(), termB.GetID(), 4); err != nil {
+		t.Fatalf("PostMoveTermTo() error = %v, want nil", err)
+	}
+
+	seqs := getPostTermSequences(t, ctx, store, post.GetID())
+	if seqs[termA.GetID()] != 1 {
+		t.Errorf("After moving B to 4: A sequence = %d, want 1", seqs[termA.GetID()])
+	}
+	if seqs[termC.GetID()] != 2 {
+		t.Errorf("After moving B to 4: C sequence = %d, want 2", seqs[termC.GetID()])
+	}
+	if seqs[termD.GetID()] != 3 {
+		t.Errorf("After moving B to 4: D sequence = %d, want 3", seqs[termD.GetID()])
+	}
+	if seqs[termB.GetID()] != 4 {
+		t.Errorf("After moving B to 4: B sequence = %d, want 4", seqs[termB.GetID()])
+	}
+
+	// Move D (pos 3) to position 1 (move up)
+	// Current: A(1), C(2), D(3), B(4)
+	// Expected: D(1), A(2), C(3), B(4)
+	if err := store.PostMoveTermTo(ctx, post.GetID(), termD.GetID(), 1); err != nil {
+		t.Fatalf("PostMoveTermTo() error = %v, want nil", err)
+	}
+
+	seqs = getPostTermSequences(t, ctx, store, post.GetID())
+	if seqs[termD.GetID()] != 1 {
+		t.Errorf("After moving D to 1: D sequence = %d, want 1", seqs[termD.GetID()])
+	}
+	if seqs[termA.GetID()] != 2 {
+		t.Errorf("After moving D to 1: A sequence = %d, want 2", seqs[termA.GetID()])
+	}
+	if seqs[termC.GetID()] != 3 {
+		t.Errorf("After moving D to 1: C sequence = %d, want 3", seqs[termC.GetID()])
+	}
+	if seqs[termB.GetID()] != 4 {
+		t.Errorf("After moving D to 1: B sequence = %d, want 4", seqs[termB.GetID()])
+	}
+
+	// Move to same position (should be no-op)
+	if err := store.PostMoveTermTo(ctx, post.GetID(), termA.GetID(), 2); err != nil {
+		t.Fatalf("PostMoveTermTo() same position error = %v, want nil", err)
+	}
+
+	seqs = getPostTermSequences(t, ctx, store, post.GetID())
+	if seqs[termA.GetID()] != 2 {
+		t.Errorf("After no-op move: A sequence = %d, want 2", seqs[termA.GetID()])
+	}
+}
+
+func TestStorePostMoveTermToLargeGap(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		DB:                 db,
+		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
+	})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	ctx := context.Background()
+
+	// Create taxonomy and many terms
+	taxonomy := NewTaxonomy().SetName("Tags").SetSlug("tag")
+	if err := store.TaxonomyCreate(ctx, taxonomy); err != nil {
+		t.Fatalf("TaxonomyCreate() error = %v, want nil", err)
+	}
+
+	// Create 10 terms
+	terms := make([]TermInterface, 10)
+	for i := 0; i < 10; i++ {
+		term := NewTerm().
+			SetTaxonomyID(taxonomy.GetID()).
+			SetName(string(rune('A' + i))).
+			SetSlug(string(rune('a' + i)))
+		if err := store.TermCreate(ctx, term); err != nil {
+			t.Fatalf("TermCreate() error = %v, want nil", err)
+		}
+		terms[i] = term
+	}
+
+	// Create a post
+	post := NewPost().SetTitle("Test Post").SetStatus(POST_STATUS_PUBLISHED)
+	if err := store.PostCreate(ctx, post); err != nil {
+		t.Fatalf("PostCreate() error = %v, want nil", err)
+	}
+
+	// Add terms at positions 1-10
+	for i, term := range terms {
+		if err := store.PostInsertTermAt(ctx, post.GetID(), term.GetID(), i+1); err != nil {
+			t.Fatalf("PostInsertTermAt() error = %v, want nil", err)
+		}
+	}
+
+	// Move term at position 10 (J) to position 2
+	// Expected: A(1), J(2), B(3), C(4), D(5), E(6), F(7), G(8), H(9), I(10)
+	if err := store.PostMoveTermTo(ctx, post.GetID(), terms[9].GetID(), 2); err != nil {
+		t.Fatalf("PostMoveTermTo() error = %v, want nil", err)
+	}
+
+	seqs := getPostTermSequences(t, ctx, store, post.GetID())
+
+	// Verify J is at position 2
+	if seqs[terms[9].GetID()] != 2 {
+		t.Errorf("J sequence = %d, want 2", seqs[terms[9].GetID()])
+	}
+
+	// Verify A is still at 1
+	if seqs[terms[0].GetID()] != 1 {
+		t.Errorf("A sequence = %d, want 1", seqs[terms[0].GetID()])
+	}
+
+	// Verify B-I shifted from 2-9 to 3-10
+	for i := 1; i <= 8; i++ {
+		if seqs[terms[i].GetID()] != i+2 {
+			t.Errorf("Term %d sequence = %d, want %d", i, seqs[terms[i].GetID()], i+2)
+		}
+	}
+}
+
+func TestStorePostMoveTermToErrors(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		DB:                 db,
+		AutomigrateEnabled: true,
+		TaxonomyEnabled:    true,
+	})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	ctx := context.Background()
+
+	// Test with empty post ID
+	if err := store.PostMoveTermTo(ctx, "", "term-id", 1); err == nil {
+		t.Error("PostMoveTermTo() with empty postID error = nil, want error")
+	}
+
+	// Test with empty term ID
+	if err := store.PostMoveTermTo(ctx, "post-id", "", 1); err == nil {
+		t.Error("PostMoveTermTo() with empty termID error = nil, want error")
+	}
+
+	// Test with negative sequence
+	if err := store.PostMoveTermTo(ctx, "post-id", "term-id", -1); err == nil {
+		t.Error("PostMoveTermTo() with negative sequence error = nil, want error")
+	}
+
+	// Test moving non-existent term
+	if err := store.PostMoveTermTo(ctx, "post-id", "non-existent-term", 1); err == nil {
+		t.Error("PostMoveTermTo() with non-existent term error = nil, want error")
+	}
+}
