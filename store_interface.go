@@ -133,11 +133,11 @@ type StoreInterface interface {
 
 	// Post-term relationship methods manage associations between posts and terms.
 
-	// PostTermAddAt associates a term with a post at the specified sequence/order.
-	PostTermAddAt(ctx context.Context, postID string, termID string, sequence int) error
+	// PostInsertTermAt associates a term with a post at the specified sequence/order.
+	PostInsertTermAt(ctx context.Context, postID string, termID string, sequence int) error
 
-	// PostTermRemove dissociates a term from a post.
-	PostTermRemove(ctx context.Context, postID string, termID string) error
+	// PostRemoveTerm dissociates a term from a post.
+	PostRemoveTerm(ctx context.Context, postID string, termID string) error
 
 	// TermListByPostID retrieves all terms associated with a post for a specific taxonomy.
 	TermListByPostID(ctx context.Context, postID string, taxonomySlug string) ([]TermInterface, error)

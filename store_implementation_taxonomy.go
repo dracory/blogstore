@@ -673,10 +673,10 @@ func (store *storeImplementation) termQuery(options TermQueryOptions) *goqu.Sele
 
 // ============================ POST-TERM RELATIONSHIP METHODS ============================
 
-// PostTermAddAt creates a relationship between a post and a term at a specific sequence position.
+// PostInsertTermAt creates a relationship between a post and a term at a specific sequence position.
 // Also increments the term's count. Duplicate key errors are ignored.
 // Returns an error if taxonomy features are not enabled.
-func (store *storeImplementation) PostTermAddAt(ctx context.Context, postID string, termID string, sequence int) error {
+func (store *storeImplementation) PostInsertTermAt(ctx context.Context, postID string, termID string, sequence int) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -718,10 +718,10 @@ func (store *storeImplementation) PostTermAddAt(ctx context.Context, postID stri
 	return store.TermIncrementCount(ctx, termID)
 }
 
-// PostTermRemove removes the relationship between a post and a term.
+// PostRemoveTerm removes the relationship between a post and a term.
 // Also decrements the term's count.
 // Returns an error if taxonomy features are not enabled.
-func (store *storeImplementation) PostTermRemove(ctx context.Context, postID string, termID string) error {
+func (store *storeImplementation) PostRemoveTerm(ctx context.Context, postID string, termID string) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -877,7 +877,7 @@ func (store *storeImplementation) PostSetTerms(ctx context.Context, postID strin
 			}
 		}
 		if !found {
-			if err := store.PostTermRemove(ctx, postID, currentTerm.GetID()); err != nil {
+			if err := store.PostRemoveTerm(ctx, postID, currentTerm.GetID()); err != nil {
 				return err
 			}
 		}
@@ -900,7 +900,7 @@ func (store *storeImplementation) PostSetTerms(ctx context.Context, postID strin
 			}
 		}
 
-		if err := store.PostTermAddAt(ctx, postID, termID, i); err != nil {
+		if err := store.PostInsertTermAt(ctx, postID, termID, i); err != nil {
 			return err
 		}
 	}

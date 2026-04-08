@@ -384,11 +384,11 @@ func TestStoreTermListByPostID(t *testing.T) {
 	}
 
 	// Add terms to post
-	if err := store.PostTermAddAt(ctx, post.GetID(), term1.GetID(), 0); err != nil {
-		t.Fatalf("PostTermAddAt() error = %v, want nil", err)
+	if err := store.PostInsertTermAt(ctx, post.GetID(), term1.GetID(), 0); err != nil {
+		t.Fatalf("PostInsertTermAt() error = %v, want nil", err)
 	}
-	if err := store.PostTermAddAt(ctx, post.GetID(), term2.GetID(), 1); err != nil {
-		t.Fatalf("PostTermAddAt() error = %v, want nil", err)
+	if err := store.PostInsertTermAt(ctx, post.GetID(), term2.GetID(), 1); err != nil {
+		t.Fatalf("PostInsertTermAt() error = %v, want nil", err)
 	}
 
 	// Get terms for post
@@ -465,11 +465,11 @@ func TestStorePostListByTermID(t *testing.T) {
 	}
 
 	// Add term to post1 and post2
-	if err := store.PostTermAddAt(ctx, post1.GetID(), term.GetID(), 0); err != nil {
-		t.Fatalf("PostTermAddAt() error = %v, want nil", err)
+	if err := store.PostInsertTermAt(ctx, post1.GetID(), term.GetID(), 0); err != nil {
+		t.Fatalf("PostInsertTermAt() error = %v, want nil", err)
 	}
-	if err := store.PostTermAddAt(ctx, post2.GetID(), term.GetID(), 1); err != nil {
-		t.Fatalf("PostTermAddAt() error = %v, want nil", err)
+	if err := store.PostInsertTermAt(ctx, post2.GetID(), term.GetID(), 1); err != nil {
+		t.Fatalf("PostInsertTermAt() error = %v, want nil", err)
 	}
 
 	// List posts for this term

@@ -353,7 +353,7 @@ func (m *MCP) toolPostAddTerm(ctx context.Context, args map[string]any) (string,
 	}
 
 	// Add term via store
-	if err := m.store.PostTermAddAt(ctx, postID, termID, 0); err != nil {
+	if err := m.store.PostInsertTermAt(ctx, postID, termID, 0); err != nil {
 		return "", err
 	}
 
