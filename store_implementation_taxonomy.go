@@ -15,6 +15,8 @@ import (
 
 // ============================ TAXONOMY STORE METHODS ============================
 
+// TaxonomyCount returns the total number of taxonomies matching the given query options.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyCount(ctx context.Context, options TaxonomyQueryOptions) (int64, error) {
 	if !store.taxonomyEnabled {
 		return -1, errors.New("taxonomy is not enabled")
@@ -58,6 +60,9 @@ func (store *storeImplementation) TaxonomyCount(ctx context.Context, options Tax
 	return i, nil
 }
 
+// TaxonomyCreate inserts a new taxonomy into the database.
+// Sets the created_at and updated_at timestamps automatically.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyCreate(ctx context.Context, taxonomy TaxonomyInterface) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -90,6 +95,8 @@ func (store *storeImplementation) TaxonomyCreate(ctx context.Context, taxonomy T
 	return nil
 }
 
+// TaxonomyDelete permanently removes a taxonomy from the database.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyDelete(ctx context.Context, taxonomy TaxonomyInterface) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -101,6 +108,8 @@ func (store *storeImplementation) TaxonomyDelete(ctx context.Context, taxonomy T
 	return store.TaxonomyDeleteByID(ctx, taxonomy.GetID())
 }
 
+// TaxonomyDeleteByID permanently removes a taxonomy by its ID.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyDeleteByID(ctx context.Context, id string) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -128,6 +137,8 @@ func (store *storeImplementation) TaxonomyDeleteByID(ctx context.Context, id str
 	return err
 }
 
+// TaxonomyFindByID retrieves a taxonomy by its ID.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyFindByID(ctx context.Context, id string) (TaxonomyInterface, error) {
 	if !store.taxonomyEnabled {
 		return nil, errors.New("taxonomy is not enabled")
@@ -152,6 +163,8 @@ func (store *storeImplementation) TaxonomyFindByID(ctx context.Context, id strin
 	return nil, nil
 }
 
+// TaxonomyFindBySlug retrieves a taxonomy by its slug.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyFindBySlug(ctx context.Context, slug string) (TaxonomyInterface, error) {
 	if !store.taxonomyEnabled {
 		return nil, errors.New("taxonomy is not enabled")
@@ -176,6 +189,8 @@ func (store *storeImplementation) TaxonomyFindBySlug(ctx context.Context, slug s
 	return nil, nil
 }
 
+// TaxonomyList retrieves a list of taxonomies matching the given query options.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyList(ctx context.Context, options TaxonomyQueryOptions) ([]TaxonomyInterface, error) {
 	if !store.taxonomyEnabled {
 		return []TaxonomyInterface{}, errors.New("taxonomy is not enabled")
@@ -214,6 +229,8 @@ func (store *storeImplementation) TaxonomyList(ctx context.Context, options Taxo
 	return list, nil
 }
 
+// TaxonomyUpdate updates an existing taxonomy in the database.
+// Only changed fields are updated. Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyUpdate(ctx context.Context, taxonomy TaxonomyInterface) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -252,6 +269,7 @@ func (store *storeImplementation) TaxonomyUpdate(ctx context.Context, taxonomy T
 	return err
 }
 
+// taxonomyQuery builds a goqu SelectDataset for querying taxonomies based on options.
 func (store *storeImplementation) taxonomyQuery(options TaxonomyQueryOptions) *goqu.SelectDataset {
 	q := goqu.Dialect(store.dbDriverName).
 		From(store.taxonomyTableName)
@@ -315,6 +333,8 @@ func (store *storeImplementation) taxonomyQuery(options TaxonomyQueryOptions) *g
 
 // ============================ TERM STORE METHODS ============================
 
+// TermCount returns the total number of terms matching the given query options.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermCount(ctx context.Context, options TermQueryOptions) (int64, error) {
 	if !store.taxonomyEnabled {
 		return -1, errors.New("taxonomy is not enabled")
@@ -358,6 +378,9 @@ func (store *storeImplementation) TermCount(ctx context.Context, options TermQue
 	return i, nil
 }
 
+// TermCreate inserts a new term into the database.
+// Sets the created_at and updated_at timestamps automatically.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermCreate(ctx context.Context, term TermInterface) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -390,6 +413,8 @@ func (store *storeImplementation) TermCreate(ctx context.Context, term TermInter
 	return nil
 }
 
+// TermDelete permanently removes a term from the database.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermDelete(ctx context.Context, term TermInterface) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -401,6 +426,8 @@ func (store *storeImplementation) TermDelete(ctx context.Context, term TermInter
 	return store.TermDeleteByID(ctx, term.GetID())
 }
 
+// TermDeleteByID permanently removes a term by its ID.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermDeleteByID(ctx context.Context, id string) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -428,6 +455,8 @@ func (store *storeImplementation) TermDeleteByID(ctx context.Context, id string)
 	return err
 }
 
+// TermFindByID retrieves a term by its ID.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermFindByID(ctx context.Context, id string) (TermInterface, error) {
 	if !store.taxonomyEnabled {
 		return nil, errors.New("taxonomy is not enabled")
@@ -452,6 +481,8 @@ func (store *storeImplementation) TermFindByID(ctx context.Context, id string) (
 	return nil, nil
 }
 
+// TermFindBySlug retrieves a term by its taxonomy slug and term slug.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermFindBySlug(ctx context.Context, taxonomySlug, termSlug string) (TermInterface, error) {
 	if !store.taxonomyEnabled {
 		return nil, errors.New("taxonomy is not enabled")
@@ -488,6 +519,8 @@ func (store *storeImplementation) TermFindBySlug(ctx context.Context, taxonomySl
 	return nil, nil
 }
 
+// TermList retrieves a list of terms matching the given query options.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermList(ctx context.Context, options TermQueryOptions) ([]TermInterface, error) {
 	if !store.taxonomyEnabled {
 		return []TermInterface{}, errors.New("taxonomy is not enabled")
@@ -526,6 +559,8 @@ func (store *storeImplementation) TermList(ctx context.Context, options TermQuer
 	return list, nil
 }
 
+// TermUpdate updates an existing term in the database.
+// Only changed fields are updated. Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermUpdate(ctx context.Context, term TermInterface) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -564,6 +599,7 @@ func (store *storeImplementation) TermUpdate(ctx context.Context, term TermInter
 	return err
 }
 
+// termQuery builds a goqu SelectDataset for querying terms based on options.
 func (store *storeImplementation) termQuery(options TermQueryOptions) *goqu.SelectDataset {
 	q := goqu.Dialect(store.dbDriverName).
 		From(store.termTableName)
@@ -637,6 +673,9 @@ func (store *storeImplementation) termQuery(options TermQueryOptions) *goqu.Sele
 
 // ============================ POST-TERM RELATIONSHIP METHODS ============================
 
+// PostTermAddAt creates a relationship between a post and a term at a specific sequence position.
+// Also increments the term's count. Duplicate key errors are ignored.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) PostTermAddAt(ctx context.Context, postID string, termID string, sequence int) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -679,6 +718,9 @@ func (store *storeImplementation) PostTermAddAt(ctx context.Context, postID stri
 	return store.TermIncrementCount(ctx, termID)
 }
 
+// PostTermRemove removes the relationship between a post and a term.
+// Also decrements the term's count.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) PostTermRemove(ctx context.Context, postID string, termID string) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -713,6 +755,9 @@ func (store *storeImplementation) PostTermRemove(ctx context.Context, postID str
 	return store.TermDecrementCount(ctx, termID)
 }
 
+// TermListByPostID retrieves all terms associated with a specific post.
+// Optionally filters by taxonomy slug.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermListByPostID(ctx context.Context, postID string, taxonomySlug string) ([]TermInterface, error) {
 	if !store.taxonomyEnabled {
 		return []TermInterface{}, errors.New("taxonomy is not enabled")
@@ -762,6 +807,8 @@ func (store *storeImplementation) TermListByPostID(ctx context.Context, postID s
 	return terms, nil
 }
 
+// PostListByTermID retrieves all posts associated with a specific term.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) PostListByTermID(ctx context.Context, termID string, options PostQueryOptions) ([]PostInterface, error) {
 	if !store.taxonomyEnabled {
 		return []PostInterface{}, errors.New("taxonomy is not enabled")
@@ -790,6 +837,9 @@ func (store *storeImplementation) PostListByTermID(ctx context.Context, termID s
 	return store.PostList(ctx, options)
 }
 
+// PostSetTerms sets the terms for a post within a specific taxonomy.
+// Removes any existing terms not in the provided list and adds new ones.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) PostSetTerms(ctx context.Context, postID string, taxonomySlug string, termIDs []string) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -858,7 +908,7 @@ func (store *storeImplementation) PostSetTerms(ctx context.Context, postID strin
 	return nil
 }
 
-// termRelationList retrieves term relations based on query options
+// termRelationList retrieves term relations based on query options.
 func (store *storeImplementation) termRelationList(ctx context.Context, options TermRelationQueryOptions) ([]TermRelationInterface, error) {
 	q := goqu.Dialect(store.dbDriverName).
 		From(store.termRelationTableName)
@@ -904,6 +954,8 @@ func (store *storeImplementation) termRelationList(ctx context.Context, options 
 
 // ============================ UTILITY METHODS ============================
 
+// TermIncrementCount increments the count of posts associated with a term.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermIncrementCount(ctx context.Context, termID string) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -922,6 +974,9 @@ func (store *storeImplementation) TermIncrementCount(ctx context.Context, termID
 	return err
 }
 
+// TermDecrementCount decrements the count of posts associated with a term.
+// The count will not go below zero.
+// Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermDecrementCount(ctx context.Context, termID string) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -940,6 +995,8 @@ func (store *storeImplementation) TermDecrementCount(ctx context.Context, termID
 	return err
 }
 
+// isDuplicateKeyError checks if the error is a duplicate key/unique constraint violation.
+// It supports SQLite, MySQL, and PostgreSQL error patterns.
 func isDuplicateKeyError(err error) bool {
 	if err == nil {
 		return false
@@ -952,10 +1009,12 @@ func isDuplicateKeyError(err error) bool {
 		contains(errStr, "23505") // PostgreSQL unique violation
 }
 
+// contains checks if string s contains the substring substr.
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr, 0))
 }
 
+// containsAt checks if string s contains the substring substr starting at position start.
 func containsAt(s, substr string, start int) bool {
 	if start+len(substr) > len(s) {
 		return false

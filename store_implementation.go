@@ -18,6 +18,8 @@ import (
 
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
 
+// storeImplementation is the concrete implementation of the StoreInterface.
+// It provides database operations for posts, taxonomies, terms, and term relations.
 type storeImplementation struct {
 	postTableName         string
 	taxonomyTableName     string
@@ -35,7 +37,9 @@ type storeImplementation struct {
 	taxonomyEnabled bool
 }
 
-// AutoMigrate auto migrate
+// AutoMigrate creates the necessary database tables for the blog store.
+// It creates the post table, and optionally taxonomy tables if enabled.
+// Also initializes the versioning store if versioning is enabled.
 func (store *storeImplementation) AutoMigrate() error {
 	// Create main post table
 	sql, err := store.sqlCreatePostTable()
@@ -100,20 +104,25 @@ func (store *storeImplementation) AutoMigrate() error {
 	return nil
 }
 
+// VersioningEnabled returns true if versioning is enabled for this store.
 func (st *storeImplementation) VersioningEnabled() bool {
 	return st.versioningEnabled
 }
 
+// TaxonomyEnabled returns true if taxonomy features are enabled for this store.
 func (st *storeImplementation) TaxonomyEnabled() bool {
 	return st.taxonomyEnabled
 }
 
-// EnableDebug - enables the debug option
+// EnableDebug enables or disables debug logging for SQL queries.
 func (st *storeImplementation) EnableDebug(debug bool) StoreInterface {
 	st.debugEnabled = debug
 	return st
 }
 
+// PostCreate inserts a new post into the database.
+// It sets the created_at and updated_at timestamps automatically.
+// Also tracks the creation in the versioning store if versioning is enabled.
 func (store *storeImplementation) PostCreate(ctx context.Context, post PostInterface) error {
 	post.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 	post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
@@ -148,6 +157,7 @@ func (store *storeImplementation) PostCreate(ctx context.Context, post PostInter
 	return nil
 }
 
+// PostCount returns the total number of posts matching the given query options.
 func (store *storeImplementation) PostCount(ctx context.Context, options PostQueryOptions) (int64, error) {
 	options.CountOnly = true
 	q := store.postQuery(options)
@@ -191,12 +201,14 @@ func (store *storeImplementation) PostCount(ctx context.Context, options PostQue
 	return i, nil
 }
 
+// PostTrash moves a post to trash by setting its status to POST_STATUS_TRASH.
 func (store *storeImplementation) PostTrash(ctx context.Context, post PostInterface) error {
 	post.SetStatus(POST_STATUS_TRASH)
 
 	return store.PostUpdate(ctx, post)
 }
 
+// PostDelete permanently removes a post from the database.
 func (store *storeImplementation) PostDelete(ctx context.Context, post PostInterface) error {
 	if post == nil {
 		return errors.New("post is nil")
@@ -205,6 +217,7 @@ func (store *storeImplementation) PostDelete(ctx context.Context, post PostInter
 	return store.PostDeleteByID(ctx, post.GetID())
 }
 
+// PostDeleteByID permanently removes a post by its ID.
 func (store *storeImplementation) PostDeleteByID(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.New("post id is empty")
@@ -229,6 +242,8 @@ func (store *storeImplementation) PostDeleteByID(ctx context.Context, id string)
 	return err
 }
 
+// PostFindByID retrieves a post by its ID.
+// Supports both full IDs and shortened IDs with automatic unshortening.
 func (store *storeImplementation) PostFindByID(ctx context.Context, id string) (PostInterface, error) {
 	if id == "" {
 		return nil, errors.New("post id is empty")
@@ -273,6 +288,7 @@ func (store *storeImplementation) PostFindByID(ctx context.Context, id string) (
 	return nil, nil
 }
 
+// PostFindPrevious finds the post created immediately before the given post.
 func (st *storeImplementation) PostFindPrevious(post PostInterface) (PostInterface, error) {
 	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtLessThan: post.GetCreatedAtCarbon().ToDateTimeString(),
@@ -290,6 +306,7 @@ func (st *storeImplementation) PostFindPrevious(post PostInterface) (PostInterfa
 	return nil, nil
 }
 
+// PostFindNext finds the post created immediately after the given post.
 func (st *storeImplementation) PostFindNext(post PostInterface) (PostInterface, error) {
 	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtGreaterThan: post.GetCreatedAtCarbon().ToDateTimeString(),
@@ -307,6 +324,7 @@ func (st *storeImplementation) PostFindNext(post PostInterface) (PostInterface, 
 	return nil, nil
 }
 
+// PostList retrieves a list of posts matching the given query options.
 func (st *storeImplementation) PostList(ctx context.Context, options PostQueryOptions) ([]PostInterface, error) {
 	q := st.postQuery(options)
 
@@ -342,6 +360,7 @@ func (st *storeImplementation) PostList(ctx context.Context, options PostQueryOp
 	return list, nil
 }
 
+// PostSoftDelete marks a post as deleted by setting the soft_deleted_at timestamp.
 func (st *storeImplementation) PostSoftDelete(ctx context.Context, post PostInterface) error {
 	if post == nil {
 		return errors.New("post is nil")
@@ -352,6 +371,7 @@ func (st *storeImplementation) PostSoftDelete(ctx context.Context, post PostInte
 	return st.PostUpdate(ctx, post)
 }
 
+// PostSoftDeleteByID marks a post as deleted by its ID.
 func (st *storeImplementation) PostSoftDeleteByID(ctx context.Context, id string) error {
 	post, err := st.PostFindByID(ctx, id)
 
@@ -362,6 +382,8 @@ func (st *storeImplementation) PostSoftDeleteByID(ctx context.Context, id string
 	return st.PostSoftDelete(ctx, post)
 }
 
+// PostUpdate updates an existing post in the database.
+// Only changed fields are updated. Also tracks the update in the versioning store if enabled.
 func (st *storeImplementation) PostUpdate(ctx context.Context, post PostInterface) error {
 	if post == nil {
 		return errors.New("order is nil")
@@ -404,6 +426,7 @@ func (st *storeImplementation) PostUpdate(ctx context.Context, post PostInterfac
 	return err
 }
 
+// postQuery builds a goqu SelectDataset for querying posts based on options.
 func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectDataset {
 	q := goqu.Dialect(st.dbDriverName).
 		From(st.postTableName)
