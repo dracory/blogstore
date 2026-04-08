@@ -19,10 +19,10 @@ func (m *MCP) taxonomyTools() []map[string]any {
 			"inputSchema": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"limit":     map[string]any{"type": "integer"},
-					"offset":    map[string]any{"type": "integer"},
-					"search":    map[string]any{"type": "string"},
-					"order_by":  map[string]any{"type": "string"},
+					"limit":      map[string]any{"type": "integer"},
+					"offset":     map[string]any{"type": "integer"},
+					"search":     map[string]any{"type": "string"},
+					"order_by":   map[string]any{"type": "string"},
 					"sort_order": map[string]any{"type": "string", "enum": []string{"asc", "desc"}},
 				},
 			},
@@ -353,7 +353,7 @@ func (m *MCP) toolPostAddTerm(ctx context.Context, args map[string]any) (string,
 	}
 
 	// Add term via store
-	if err := m.store.PostTermAdd(ctx, postID, termID, 0); err != nil {
+	if err := m.store.PostTermAddAt(ctx, postID, termID, 0); err != nil {
 		return "", err
 	}
 
@@ -393,7 +393,7 @@ func (m *MCP) toolPostGetTerms(ctx context.Context, args map[string]any) (string
 	}
 
 	// Get terms via store
-	terms, err := m.store.PostTerms(ctx, postID, taxonomySlug)
+	terms, err := m.store.TermListByPostID(ctx, postID, taxonomySlug)
 	if err != nil {
 		return "", err
 	}
@@ -411,9 +411,9 @@ func (m *MCP) toolPostGetTerms(ctx context.Context, args map[string]any) (string
 	}
 
 	b, _ := json.Marshal(map[string]any{
-		"post_id": postID,
+		"post_id":  postID,
 		"taxonomy": taxonomySlug,
-		"terms":   items,
+		"terms":    items,
 	})
 	return string(b), nil
 }

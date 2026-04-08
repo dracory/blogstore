@@ -97,7 +97,7 @@ store.TermCreate(ctx, prog)
 store.PostSetTerms(ctx, postID, "category", []string{prog.GetID()})
 
 // Get terms for a post
-terms, _ := store.PostTerms(ctx, postID, "category")
+terms, _ := store.TermListByPostID(ctx, postID, "category")
 ```
 
 ## License

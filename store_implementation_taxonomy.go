@@ -637,7 +637,7 @@ func (store *storeImplementation) termQuery(options TermQueryOptions) *goqu.Sele
 
 // ============================ POST-TERM RELATIONSHIP METHODS ============================
 
-func (store *storeImplementation) PostTermAdd(ctx context.Context, postID string, termID string, sequence int) error {
+func (store *storeImplementation) PostTermAddAt(ctx context.Context, postID string, termID string, sequence int) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -713,7 +713,7 @@ func (store *storeImplementation) PostTermRemove(ctx context.Context, postID str
 	return store.TermDecrementCount(ctx, termID)
 }
 
-func (store *storeImplementation) PostTerms(ctx context.Context, postID string, taxonomySlug string) ([]TermInterface, error) {
+func (store *storeImplementation) TermListByPostID(ctx context.Context, postID string, taxonomySlug string) ([]TermInterface, error) {
 	if !store.taxonomyEnabled {
 		return []TermInterface{}, errors.New("taxonomy is not enabled")
 	}
@@ -762,6 +762,34 @@ func (store *storeImplementation) PostTerms(ctx context.Context, postID string, 
 	return terms, nil
 }
 
+func (store *storeImplementation) PostListByTermID(ctx context.Context, termID string, options PostQueryOptions) ([]PostInterface, error) {
+	if !store.taxonomyEnabled {
+		return []PostInterface{}, errors.New("taxonomy is not enabled")
+	}
+	if termID == "" {
+		return []PostInterface{}, errors.New("term id is required")
+	}
+
+	// Get all term relations for this term
+	relations, err := store.termRelationList(ctx, TermRelationQueryOptions{TermID: termID})
+	if err != nil {
+		return []PostInterface{}, err
+	}
+
+	if len(relations) == 0 {
+		return []PostInterface{}, nil
+	}
+
+	// Get post IDs
+	postIDs := lo.Map(relations, func(r TermRelationInterface, _ int) string {
+		return r.GetPostID()
+	})
+
+	// Get posts
+	options.IDIn = postIDs
+	return store.PostList(ctx, options)
+}
+
 func (store *storeImplementation) PostSetTerms(ctx context.Context, postID string, taxonomySlug string, termIDs []string) error {
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
@@ -784,7 +812,7 @@ func (store *storeImplementation) PostSetTerms(ctx context.Context, postID strin
 	}
 
 	// Get current term relations for this post and taxonomy
-	currentTerms, err := store.PostTerms(ctx, postID, taxonomySlug)
+	currentTerms, err := store.TermListByPostID(ctx, postID, taxonomySlug)
 	if err != nil {
 		return err
 	}
@@ -822,7 +850,7 @@ func (store *storeImplementation) PostSetTerms(ctx context.Context, postID strin
 			}
 		}
 
-		if err := store.PostTermAdd(ctx, postID, termID, i); err != nil {
+		if err := store.PostTermAddAt(ctx, postID, termID, i); err != nil {
 			return err
 		}
 	}
