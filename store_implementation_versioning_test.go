@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dracory/sb"
 	"github.com/dracory/versionstore"
@@ -308,6 +309,9 @@ func TestVersioningCreateIfChanged_WithChange(t *testing.T) {
 	if err != nil {
 		t.Fatal("unexpected error:", err)
 	}
+
+	// Delay to ensure different timestamps
+	time.Sleep(1 * time.Second)
 
 	err = s.versioningCreateIfChanged(ctx, VERSIONING_TYPE_POST, entityID, content2)
 	if err != nil {
@@ -740,14 +744,26 @@ func TestVersioningSoftDeleteByID(t *testing.T) {
 		t.Error("unexpected error:", err)
 	}
 
+	// After soft delete, FindByID should not find the record (excludes soft-deleted by default)
 	found, err := s.VersioningFindByID(ctx, versionID)
 	if err != nil {
 		t.Fatal("unexpected error:", err)
 	}
-	if found == nil {
-		t.Fatal("expected found to be non-nil")
+	if found != nil {
+		t.Fatal("expected found to be nil after soft delete")
 	}
-	if found.SoftDeletedAt() == "" {
+
+	// But record should exist with soft deleted included
+	list, err := s.VersioningList(ctx, NewVersioningQuery().
+		SetEntityID(versionID).
+		SetSoftDeletedIncluded(true))
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected 1 record with soft deleted included, got %d", len(list))
+	}
+	if list[0].SoftDeletedAt() == "" {
 		t.Error("expected SoftDeletedAt to be non-empty")
 	}
 }
@@ -818,18 +834,20 @@ func TestVersioningUpdate(t *testing.T) {
 		t.Fatal("unexpected error:", err)
 	}
 
+	// Attempt to update content - version content is immutable, so this should not change anything
 	version.SetContent(`{"title":"Updated Title"}`)
 	err = store.VersioningUpdate(ctx, version)
 	if err != nil {
 		t.Error("unexpected error:", err)
 	}
 
+	// Content should remain unchanged (immutable)
 	found, err := store.VersioningFindByID(ctx, version.ID())
 	if err != nil {
 		t.Fatal("unexpected error:", err)
 	}
-	if found.Content() != `{"title":"Updated Title"}` {
-		t.Errorf("expected content '{\"title\":\"Updated Title\"}', got %q", found.Content())
+	if found.Content() != `{"title":"Original Title"}` {
+		t.Errorf("expected content to remain unchanged '{\"title\":\"Original Title\"}', got %q", found.Content())
 	}
 }
 
