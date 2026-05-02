@@ -50,7 +50,13 @@ func (store *storeImplementation) migrateSlugColumn() error {
 	var exists bool
 	err = store.db.QueryRow(checkSQL, checkParams...).Scan(&exists)
 	if err != nil {
-		return err
+		if err == sql.ErrNoRows {
+			// No rows means column doesn't exist
+			exists = false
+		} else {
+			log.Println(err)
+			return err
+		}
 	}
 
 	if !exists {
