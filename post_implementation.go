@@ -602,8 +602,6 @@ func (o *postImplementation) SetTagIDs(ids []string) PostInterface {
 
 // ============================ OLD SLUG METHODS ============================
 
-const META_KEY_OLD_SLUGS = "_wp_old_slug"
-
 // GetOldSlugs retrieves the array of historical slugs for redirect purposes.
 func (o *postImplementation) GetOldSlugs() []string {
 	metas, err := o.GetMetas()

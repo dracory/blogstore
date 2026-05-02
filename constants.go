@@ -52,3 +52,6 @@ const COLUMN_SEQUENCE = "sequence"
 // Taxonomy types (pre-defined)
 const TAXONOMY_CATEGORY = "category"
 const TAXONOMY_TAG = "tag"
+
+// Meta key names
+const META_KEY_OLD_SLUGS = "_old_slugs"

@@ -568,13 +568,13 @@ func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectD
 		switch st.dbDriverName {
 		case "sqlite3", "sqlite":
 			// SQLite: json_extract returns JSON array, check if contains value
-			jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", '$._wp_old_slug') LIKE ?", "%\""+options.OldSlug+"\"%")
+			jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", '$."+META_KEY_OLD_SLUGS+"') LIKE ?", "%\""+options.OldSlug+"\"%")
 		case "mysql":
 			// MySQL: JSON_CONTAINS
-			jsonExpr = goqu.L("JSON_CONTAINS(JSON_EXTRACT("+COLUMN_METAS+", '$._wp_old_slug'), ?)", "\""+options.OldSlug+"\"")
+			jsonExpr = goqu.L("JSON_CONTAINS(JSON_EXTRACT("+COLUMN_METAS+", '$."+META_KEY_OLD_SLUGS+"'), ?)", "\""+options.OldSlug+"\"")
 		default:
 			// PostgreSQL: jsonb_array_elements or string contains
-			jsonExpr = goqu.L("("+COLUMN_METAS+"->>'_wp_old_slug')::text LIKE ?", "%\""+options.OldSlug+"\"%")
+			jsonExpr = goqu.L("("+COLUMN_METAS+"->>'"+META_KEY_OLD_SLUGS+"')::text LIKE ?", "%\""+options.OldSlug+"\"%")
 		}
 		q = q.Where(jsonExpr)
 	}
