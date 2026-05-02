@@ -339,6 +339,7 @@ func (st *storeImplementation) PostList(ctx context.Context, options PostQueryOp
 
 	if st.debugEnabled {
 		log.Println(sqlStr)
+		log.Println(sqlParams)
 	}
 
 	modelMaps, err := database.SelectToMapString(
@@ -478,10 +479,10 @@ func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectD
 			switch st.dbDriverName {
 			case "sqlite3", "sqlite":
 				// SQLite json_extract syntax
-				jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", ?)", "$.."+key).Eq(value)
+				jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", ?)", "$."+key).Eq(value)
 			case "mysql":
 				// MySQL JSON_EXTRACT syntax
-				jsonExpr = goqu.L("JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", ?))", "$.."+key).Eq(value)
+				jsonExpr = goqu.L("JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", ?))", "$."+key).Eq(value)
 			default:
 				// PostgreSQL and others - use generic JSON extraction
 				jsonExpr = goqu.L("("+COLUMN_METAS+"->>?)::text", key).Eq(value)

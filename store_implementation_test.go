@@ -216,6 +216,83 @@ func TestStorePostListAndCount(t *testing.T) {
 	}
 }
 
+func TestStorePostListMetaContains(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		DB:                 db,
+		AutomigrateEnabled: true,
+	})
+
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	ctx := context.Background()
+
+	// create posts with different metadata
+	post1 := NewPost().SetTitle("Post with wp_id").SetStatus(POST_STATUS_PUBLISHED)
+	if err := post1.SetMetas(map[string]string{"wp_id": "123", "wp_post_name": "my-post"}); err != nil {
+		t.Fatalf("SetMetas() error = %v", err)
+	}
+	if err := store.PostCreate(ctx, post1); err != nil {
+		t.Fatalf("PostCreate() error = %v", err)
+	}
+
+	post2 := NewPost().SetTitle("Post with different wp_id").SetStatus(POST_STATUS_PUBLISHED)
+	if err := post2.SetMetas(map[string]string{"wp_id": "456", "custom_field": "value"}); err != nil {
+		t.Fatalf("SetMetas() error = %v", err)
+	}
+	if err := store.PostCreate(ctx, post2); err != nil {
+		t.Fatalf("PostCreate() error = %v", err)
+	}
+
+	post3 := NewPost().SetTitle("Post without metadata").SetStatus(POST_STATUS_PUBLISHED)
+	if err := store.PostCreate(ctx, post3); err != nil {
+		t.Fatalf("PostCreate() error = %v", err)
+	}
+
+	// Test MetaContains with wp_id
+	list, err := store.PostList(ctx, PostQueryOptions{
+		MetaContains: map[string]string{"wp_id": "123"},
+	})
+	if err != nil {
+		t.Fatalf("PostList() with MetaContains error = %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("PostList() with MetaContains len = %d, want 1", len(list))
+	}
+	if list[0].GetID() != post1.GetID() {
+		t.Errorf("PostList() with MetaContains returned wrong post, want ID %s, got %s", post1.GetID(), list[0].GetID())
+	}
+
+	// Test MetaContains with wp_post_name
+	list, err = store.PostList(ctx, PostQueryOptions{
+		MetaContains: map[string]string{"wp_post_name": "my-post"},
+	})
+	if err != nil {
+		t.Fatalf("PostList() with MetaContains error = %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("PostList() with MetaContains len = %d, want 1", len(list))
+	}
+	if list[0].GetID() != post1.GetID() {
+		t.Errorf("PostList() with MetaContains returned wrong post, want ID %s, got %s", post1.GetID(), list[0].GetID())
+	}
+
+	// Test MetaContains with non-existent value
+	list, err = store.PostList(ctx, PostQueryOptions{
+		MetaContains: map[string]string{"wp_id": "999"},
+	})
+	if err != nil {
+		t.Fatalf("PostList() with MetaContains error = %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("PostList() with non-existent MetaContains len = %d, want 0", len(list))
+	}
+}
+
 func TestStorePostTrashAndUpdate(t *testing.T) {
 	db := initDB()
 
