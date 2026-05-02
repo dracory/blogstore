@@ -39,6 +39,10 @@ type StoreInterface interface {
 	// Returns the post and nil error on success, or nil and an error if not found.
 	PostFindByID(ctx context.Context, id string) (PostInterface, error)
 
+	// PostFindByOldSlug retrieves a post by its old slug (for redirect handling).
+	// Returns the post and nil error on success, or nil and an error if not found.
+	PostFindByOldSlug(ctx context.Context, oldSlug string) (PostInterface, error)
+
 	// PostList retrieves a list of posts matching the provided query options.
 	// Supports pagination, sorting, and filtering through PostQueryOptions.
 	PostList(ctx context.Context, options PostQueryOptions) ([]PostInterface, error)

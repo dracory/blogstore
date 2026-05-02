@@ -333,6 +333,28 @@ func (store *storeImplementation) PostFindByID(ctx context.Context, id string) (
 	return nil, nil
 }
 
+// PostFindByOldSlug retrieves a post by its old slug (for redirect handling).
+func (store *storeImplementation) PostFindByOldSlug(ctx context.Context, oldSlug string) (PostInterface, error) {
+	if oldSlug == "" {
+		return nil, errors.New("old slug is empty")
+	}
+
+	list, err := store.PostList(ctx, PostQueryOptions{
+		OldSlug: oldSlug,
+		Limit:   1,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(list) > 0 {
+		return list[0], nil
+	}
+
+	return nil, nil
+}
+
 // PostFindPrevious finds the post created immediately before the given post.
 func (st *storeImplementation) PostFindPrevious(post PostInterface) (PostInterface, error) {
 	list, err := st.PostList(context.Background(), PostQueryOptions{
@@ -534,6 +556,23 @@ func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectD
 			}
 			q = q.Where(jsonExpr)
 		}
+	}
+
+	// Handle OldSlug filtering - checks if old slugs array contains the value
+	if options.OldSlug != "" {
+		var jsonExpr goqu.Expression
+		switch st.dbDriverName {
+		case "sqlite3", "sqlite":
+			// SQLite: json_extract returns JSON array, check if contains value
+			jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", '$._wp_old_slug') LIKE ?", "%\""+options.OldSlug+"\"%")
+		case "mysql":
+			// MySQL: JSON_CONTAINS
+			jsonExpr = goqu.L("JSON_CONTAINS(JSON_EXTRACT("+COLUMN_METAS+", '$._wp_old_slug'), ?)", "\""+options.OldSlug+"\"")
+		default:
+			// PostgreSQL: jsonb_array_elements or string contains
+			jsonExpr = goqu.L("("+COLUMN_METAS+"->>'_wp_old_slug')::text LIKE ?", "%\""+options.OldSlug+"\"%")
+		}
+		q = q.Where(jsonExpr)
 	}
 
 	if !options.CountOnly {

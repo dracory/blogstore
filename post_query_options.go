@@ -11,6 +11,8 @@ type PostQueryOptions struct {
 	Status string
 	// StatusIn filters by multiple post statuses.
 	StatusIn []string
+	// OldSlug filters posts where the old slugs array contains this value.
+	OldSlug string
 	// Search performs a case-insensitive search on title and content.
 	Search string
 	// CreatedAtLessThan filters posts created before this timestamp.
