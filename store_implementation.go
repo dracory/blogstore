@@ -41,7 +41,6 @@ type storeImplementation struct {
 // TODO: Remove this function after May 2027 (1 year from implementation)
 func (store *storeImplementation) migrateSlugColumn() error {
 	checkSQL, checkParams, err := sb.NewBuilder(sb.DatabaseDriverName(store.db)).
-		Table(store.postTableName).
 		TableColumnExists(store.postTableName, COLUMN_SLUG)
 	if err != nil {
 		return err
@@ -61,8 +60,7 @@ func (store *storeImplementation) migrateSlugColumn() error {
 
 	if !exists {
 		alterSQL, err := sb.NewBuilder(sb.DatabaseDriverName(store.db)).
-			Table(store.postTableName).
-			TableColumnAdd(COLUMN_SLUG, sb.Column{
+			TableColumnAdd(store.postTableName, sb.Column{
 				Name:   COLUMN_SLUG,
 				Type:   sb.COLUMN_TYPE_STRING,
 				Length: 255,
