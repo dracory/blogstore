@@ -29,6 +29,8 @@ type PostInterface interface {
 	SetTitle(title string) PostInterface
 	// GetSlug returns the URL-friendly slug generated from the title.
 	GetSlug() string
+	// SetSlug sets the URL-friendly slug for this post.
+	SetSlug(slug string) PostInterface
 
 	// GetContent returns the main content/body of the post.
 	GetContent() string
@@ -182,6 +184,14 @@ type PostInterface interface {
 	TagIDs() []string
 	// SetTagIDs sets the tag IDs for this post.
 	SetTagIDs(ids []string) PostInterface
+
+	// Old Slug methods (WordPress-style slug history for redirects)
+	// GetOldSlugs retrieves the array of historical slugs for redirect purposes.
+	GetOldSlugs() []string
+	// SetOldSlugs sets the array of historical slugs.
+	SetOldSlugs(slugs []string) error
+	// AddOldSlug adds a slug to the old slugs history.
+	AddOldSlug(slug string) error
 
 	// DataObject methods (from embedded dataobject.DataObject)
 	// GetData returns all post data as a map.

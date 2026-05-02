@@ -26,6 +26,7 @@ func NewPost() PostInterface {
 		SetMetaDescription("").
 		SetMetaKeywords("").
 		SetMetaRobots("").
+		SetSlug("").
 		SetStatus(POST_STATUS_DRAFT).
 		SetPublishedAt(sb.NULL_DATETIME).
 		SetSummary("").
@@ -55,9 +56,20 @@ type postImplementation struct {
 
 // ================================== METHODS ==================================
 
-// GetSlug generates a URL-friendly slug from the post title.
+// GetSlug returns the URL-friendly slug for this post.
+// If a custom slug is set, it returns that; otherwise, it generates one from the title.
 func (o *postImplementation) GetSlug() string {
+	storedSlug := o.Get(COLUMN_SLUG)
+	if storedSlug != "" {
+		return storedSlug
+	}
 	return str.Slugify(o.GetTitle(), '-')
+}
+
+// SetSlug sets the URL-friendly slug for this post.
+func (o *postImplementation) SetSlug(slug string) PostInterface {
+	o.Set(COLUMN_SLUG, slug)
+	return o
 }
 
 // GetEditor returns the editor type for this post (e.g., markdown, html, blocks).
@@ -586,6 +598,68 @@ func (o *postImplementation) TagIDs() []string {
 // SetTagIDs sets the tag IDs for this post.
 func (o *postImplementation) SetTagIDs(ids []string) PostInterface {
 	return o.SetTermIDs(TAXONOMY_TAG, ids)
+}
+
+// ============================ OLD SLUG METHODS ============================
+
+const META_KEY_OLD_SLUGS = "_wp_old_slug"
+
+// GetOldSlugs retrieves the array of historical slugs for redirect purposes.
+func (o *postImplementation) GetOldSlugs() []string {
+	metas, err := o.GetMetas()
+	if err != nil {
+		return []string{}
+	}
+
+	jsonStr := lo.ValueOr(metas, META_KEY_OLD_SLUGS, "")
+	if jsonStr == "" {
+		return []string{}
+	}
+
+	var slugs []string
+	if err := json.Unmarshal([]byte(jsonStr), &slugs); err != nil {
+		return []string{}
+	}
+
+	return slugs
+}
+
+// SetOldSlugs sets the array of historical slugs.
+func (o *postImplementation) SetOldSlugs(slugs []string) error {
+	metas, err := o.GetMetas()
+	if err != nil {
+		return err
+	}
+
+	if len(slugs) == 0 {
+		delete(metas, META_KEY_OLD_SLUGS)
+	} else {
+		jsonBytes, err := json.Marshal(slugs)
+		if err != nil {
+			return err
+		}
+		metas[META_KEY_OLD_SLUGS] = string(jsonBytes)
+	}
+
+	return o.SetMetas(metas)
+}
+
+// AddOldSlug adds a slug to the old slugs history.
+func (o *postImplementation) AddOldSlug(slug string) error {
+	if slug == "" {
+		return nil
+	}
+
+	oldSlugs := o.GetOldSlugs()
+	// Avoid duplicates
+	for _, s := range oldSlugs {
+		if s == slug {
+			return nil
+		}
+	}
+
+	oldSlugs = append(oldSlugs, slug)
+	return o.SetOldSlugs(oldSlugs)
 }
 
 // BlogNoImageUrl returns a default image URL when no featured image is set.

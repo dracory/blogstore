@@ -25,6 +25,11 @@ func (st *storeImplementation) sqlCreatePostTable() (string, error) {
 			Length: 255,
 		}).
 		Column(sb.Column{
+			Name:   COLUMN_SLUG,
+			Type:   sb.COLUMN_TYPE_STRING,
+			Length: 255,
+		}).
+		Column(sb.Column{
 			Name: COLUMN_CONTENT,
 			Type: sb.COLUMN_TYPE_TEXT,
 		}).

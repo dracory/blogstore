@@ -189,3 +189,88 @@ func TestPostSlugAndImageUrlOrDefault(t *testing.T) {
 		t.Errorf("ImageUrlOrDefault() = %q, want %q", got, "http://example.com/img.png")
 	}
 }
+
+func TestPostCustomSlug(t *testing.T) {
+	p := NewPost()
+
+	// Test auto-generated slug from title
+	p.SetTitle("Hello World Post")
+	autoSlug := p.GetSlug()
+	if autoSlug != "hello-world-post" {
+		t.Errorf("auto-generated slug = %q, want %q", autoSlug, "hello-world-post")
+	}
+
+	// Test custom slug overrides auto-generation
+	p.SetSlug("my-custom-slug")
+	if got := p.GetSlug(); got != "my-custom-slug" {
+		t.Errorf("custom slug = %q, want %q", got, "my-custom-slug")
+	}
+
+	// Test empty slug falls back to title generation
+	p.SetSlug("")
+	if got := p.GetSlug(); got != "hello-world-post" {
+		t.Errorf("fallback slug = %q, want %q", got, "hello-world-post")
+	}
+}
+
+func TestPostOldSlugs(t *testing.T) {
+	p := NewPost()
+
+	// Initially empty
+	if got := p.GetOldSlugs(); len(got) != 0 {
+		t.Errorf("initial old slugs = %v, want empty", got)
+	}
+
+	// Add old slug
+	if err := p.AddOldSlug("old-slug-1"); err != nil {
+		t.Fatalf("AddOldSlug() error = %v, want nil", err)
+	}
+
+	oldSlugs := p.GetOldSlugs()
+	if len(oldSlugs) != 1 {
+		t.Errorf("old slugs length = %d, want 1", len(oldSlugs))
+	}
+	if oldSlugs[0] != "old-slug-1" {
+		t.Errorf("old slug = %q, want %q", oldSlugs[0], "old-slug-1")
+	}
+
+	// Add another old slug
+	if err := p.AddOldSlug("old-slug-2"); err != nil {
+		t.Fatalf("AddOldSlug() error = %v, want nil", err)
+	}
+
+	oldSlugs = p.GetOldSlugs()
+	if len(oldSlugs) != 2 {
+		t.Errorf("old slugs length = %d, want 2", len(oldSlugs))
+	}
+
+	// Test duplicate prevention
+	if err := p.AddOldSlug("old-slug-1"); err != nil {
+		t.Fatalf("AddOldSlug() duplicate error = %v, want nil", err)
+	}
+
+	oldSlugs = p.GetOldSlugs()
+	if len(oldSlugs) != 2 {
+		t.Errorf("old slugs length after duplicate = %d, want 2", len(oldSlugs))
+	}
+
+	// Test SetOldSlugs
+	if err := p.SetOldSlugs([]string{"slug-a", "slug-b", "slug-c"}); err != nil {
+		t.Fatalf("SetOldSlugs() error = %v, want nil", err)
+	}
+
+	oldSlugs = p.GetOldSlugs()
+	if len(oldSlugs) != 3 {
+		t.Errorf("old slugs length after SetOldSlugs = %d, want 3", len(oldSlugs))
+	}
+
+	// Test clearing old slugs
+	if err := p.SetOldSlugs([]string{}); err != nil {
+		t.Fatalf("SetOldSlugs() clear error = %v, want nil", err)
+	}
+
+	oldSlugs = p.GetOldSlugs()
+	if len(oldSlugs) != 0 {
+		t.Errorf("old slugs after clear = %v, want empty", oldSlugs)
+	}
+}

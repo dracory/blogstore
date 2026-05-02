@@ -37,6 +37,43 @@ type storeImplementation struct {
 	taxonomyEnabled bool
 }
 
+// migrateSlugColumn adds the slug column if it doesn't exist (for existing installations)
+// TODO: Remove this function after May 2027 (1 year from implementation)
+func (store *storeImplementation) migrateSlugColumn() error {
+	checkSQL, checkParams, err := sb.NewBuilder(sb.DatabaseDriverName(store.db)).
+		Table(store.postTableName).
+		TableColumnExists(store.postTableName, COLUMN_SLUG)
+	if err != nil {
+		return err
+	}
+
+	var exists bool
+	err = store.db.QueryRow(checkSQL, checkParams...).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		alterSQL, err := sb.NewBuilder(sb.DatabaseDriverName(store.db)).
+			Table(store.postTableName).
+			TableColumnAdd(COLUMN_SLUG, sb.Column{
+				Name:   COLUMN_SLUG,
+				Type:   sb.COLUMN_TYPE_STRING,
+				Length: 255,
+			})
+		if err != nil {
+			return err
+		}
+
+		_, err = store.db.Exec(alterSQL)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // AutoMigrate creates the necessary database tables for the blog store.
 // It creates the post table, and optionally taxonomy tables if enabled.
 // Also initializes the versioning store if versioning is enabled.
@@ -48,6 +85,14 @@ func (store *storeImplementation) AutoMigrate() error {
 	}
 
 	_, err = store.db.Exec(sql)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	// TODO: Remove this migration logic after May 2027 (1 year from implementation)
+	// This allows existing installations to auto-migrate the slug column
+	err = store.migrateSlugColumn()
 	if err != nil {
 		log.Println(err)
 		return err
