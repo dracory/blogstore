@@ -332,7 +332,7 @@ func TestStorePostListAndCount(t *testing.T) {
 	}
 }
 
-func TestStorePostListMetaContains(t *testing.T) {
+func TestStorePostListMetaEquals(t *testing.T) {
 	db := initDB()
 
 	store, err := NewStore(NewStoreOptions{
@@ -369,43 +369,43 @@ func TestStorePostListMetaContains(t *testing.T) {
 		t.Fatalf("PostCreate() error = %v", err)
 	}
 
-	// Test MetaContains with wp_id
+	// Test MetaEquals with wp_id
 	list, err := store.PostList(ctx, PostQueryOptions{
-		MetaContains: map[string]string{"wp_id": "123"},
+		MetaEquals: map[string]string{"wp_id": "123"},
 	})
 	if err != nil {
-		t.Fatalf("PostList() with MetaContains error = %v", err)
+		t.Fatalf("PostList() with MetaEquals error = %v", err)
 	}
 	if len(list) != 1 {
-		t.Fatalf("PostList() with MetaContains len = %d, want 1", len(list))
+		t.Fatalf("PostList() with MetaEquals len = %d, want 1", len(list))
 	}
 	if list[0].GetID() != post1.GetID() {
-		t.Errorf("PostList() with MetaContains returned wrong post, want ID %s, got %s", post1.GetID(), list[0].GetID())
+		t.Errorf("PostList() with MetaEquals returned wrong post, want ID %s, got %s", post1.GetID(), list[0].GetID())
 	}
 
-	// Test MetaContains with wp_post_name
+	// Test MetaEquals with wp_post_name
 	list, err = store.PostList(ctx, PostQueryOptions{
-		MetaContains: map[string]string{"wp_post_name": "my-post"},
+		MetaEquals: map[string]string{"wp_post_name": "my-post"},
 	})
 	if err != nil {
-		t.Fatalf("PostList() with MetaContains error = %v", err)
+		t.Fatalf("PostList() with MetaEquals error = %v", err)
 	}
 	if len(list) != 1 {
-		t.Fatalf("PostList() with MetaContains len = %d, want 1", len(list))
+		t.Fatalf("PostList() with MetaEquals len = %d, want 1", len(list))
 	}
 	if list[0].GetID() != post1.GetID() {
-		t.Errorf("PostList() with MetaContains returned wrong post, want ID %s, got %s", post1.GetID(), list[0].GetID())
+		t.Errorf("PostList() with MetaEquals returned wrong post, want ID %s, got %s", post1.GetID(), list[0].GetID())
 	}
 
-	// Test MetaContains with non-existent value
+	// Test MetaEquals with non-existent value
 	list, err = store.PostList(ctx, PostQueryOptions{
-		MetaContains: map[string]string{"wp_id": "999"},
+		MetaEquals: map[string]string{"wp_id": "999"},
 	})
 	if err != nil {
-		t.Fatalf("PostList() with MetaContains error = %v", err)
+		t.Fatalf("PostList() with MetaEquals error = %v", err)
 	}
 	if len(list) != 0 {
-		t.Fatalf("PostList() with non-existent MetaContains len = %d, want 0", len(list))
+		t.Fatalf("PostList() with non-existent MetaEquals len = %d, want 0", len(list))
 	}
 }
 

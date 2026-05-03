@@ -33,7 +33,10 @@ type PostQueryOptions struct {
 	CountOnly bool
 	// WithDeleted includes soft-deleted posts in the results.
 	WithDeleted bool
-	// MetaContains filters posts where the meta JSON column contains the specified key-value pair.
-	// Example: MetaContains: map[string]string{"wp_id": "123"}
-	MetaContains map[string]string
+	// MetaEquals filters posts where the meta JSON column has the specified key-value pair (equality).
+	// Example: MetaEquals: map[string]string{"content_type": "plain_text"}
+	MetaEquals map[string]string
+	// MetaArrayContains filters posts where the meta JSON column's array field contains the specified value.
+	// Example: MetaArrayContains: map[string]string{"_old_slugs": "11"}
+	MetaArrayContains map[string]string
 }

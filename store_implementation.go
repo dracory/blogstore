@@ -365,6 +365,20 @@ func (store *storeImplementation) PostFindByOldSlug(ctx context.Context, oldSlug
 		return nil, errors.New("old slug is empty")
 	}
 
+	// Debug: Get all posts to check the actual metas JSON format
+	if store.debugEnabled {
+		allPosts, _ := store.PostList(ctx, PostQueryOptions{})
+		for _, p := range allPosts {
+			metas, err := p.GetMetas()
+			if err == nil && metas != nil {
+				oldSlugsJSON := metas[META_KEY_OLD_SLUGS]
+				if oldSlugsJSON != "" {
+					log.Printf("DEBUG: Post %s has old_slugs JSON: %s", p.GetID(), oldSlugsJSON)
+				}
+			}
+		}
+	}
+
 	list, err := store.PostList(ctx, PostQueryOptions{
 		OldSlug: oldSlug,
 		Limit:   1,
@@ -566,9 +580,9 @@ func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectD
 		q = q.Where(goqu.C(COLUMN_CREATED_AT).Lt(options.CreatedAtLessThan))
 	}
 
-	// Handle MetaContains filtering - checks if meta JSON contains key-value pair
-	if len(options.MetaContains) > 0 {
-		for key, value := range options.MetaContains {
+	// Handle MetaEquals filtering - checks if meta JSON has key-value pair (equality)
+	if len(options.MetaEquals) > 0 {
+		for key, value := range options.MetaEquals {
 			// Use JSON extraction for cross-database compatibility
 			// SQLite: json_extract(metas, '$.key')
 			// MySQL/PostgreSQL: metas->>'$.key' or json_extract(metas, '$.key')
@@ -588,6 +602,25 @@ func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectD
 		}
 	}
 
+	// Handle MetaArrayContains filtering - checks if meta JSON array field contains the value
+	if len(options.MetaArrayContains) > 0 {
+		for key, value := range options.MetaArrayContains {
+			var jsonExpr goqu.Expression
+			switch st.dbDriverName {
+			case "sqlite3", "sqlite":
+				// SQLite: json_extract returns JSON array, check if contains value
+				jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", ?) LIKE ?", "$."+key, "%\""+value+"\"%")
+			case "mysql":
+				// MySQL: JSON_CONTAINS - properly escape the value as JSON string
+				jsonExpr = goqu.L("JSON_CONTAINS(JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", ?)), JSON_QUOTE(?))", "$."+key, value)
+			default:
+				// PostgreSQL: jsonb_array_elements or string contains
+				jsonExpr = goqu.L("("+COLUMN_METAS+"->>?)::text LIKE ?", key, "%\""+value+"\"%")
+			}
+			q = q.Where(jsonExpr)
+		}
+	}
+
 	// Handle OldSlug filtering - checks if old slugs array contains the value
 	if options.OldSlug != "" {
 		var jsonExpr goqu.Expression
@@ -596,8 +629,8 @@ func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectD
 			// SQLite: json_extract returns JSON array, check if contains value
 			jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", '$."+META_KEY_OLD_SLUGS+"') LIKE ?", "%\""+options.OldSlug+"\"%")
 		case "mysql":
-			// MySQL: JSON_CONTAINS
-			jsonExpr = goqu.L("JSON_CONTAINS(JSON_EXTRACT("+COLUMN_METAS+", '$."+META_KEY_OLD_SLUGS+"'), ?)", "\""+options.OldSlug+"\"")
+			// MySQL: JSON_CONTAINS - properly escape the value as JSON string
+			jsonExpr = goqu.L("JSON_CONTAINS(JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", '$."+META_KEY_OLD_SLUGS+"')), JSON_QUOTE(?))", options.OldSlug)
 		default:
 			// PostgreSQL: jsonb_array_elements or string contains
 			jsonExpr = goqu.L("("+COLUMN_METAS+"->>'"+META_KEY_OLD_SLUGS+"')::text LIKE ?", "%\""+options.OldSlug+"\"%")
