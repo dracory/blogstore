@@ -337,6 +337,28 @@ func (store *storeImplementation) PostFindByID(ctx context.Context, id string) (
 	return nil, nil
 }
 
+// PostFindBySlug retrieves a post by its slug.
+func (store *storeImplementation) PostFindBySlug(ctx context.Context, slug string) (PostInterface, error) {
+	if slug == "" {
+		return nil, errors.New("slug is empty")
+	}
+
+	list, err := store.PostList(ctx, PostQueryOptions{
+		Slug:  slug,
+		Limit: 1,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(list) > 0 {
+		return list[0], nil
+	}
+
+	return nil, nil
+}
+
 // PostFindByOldSlug retrieves a post by its old slug (for redirect handling).
 func (store *storeImplementation) PostFindByOldSlug(ctx context.Context, oldSlug string) (PostInterface, error) {
 	if oldSlug == "" {
@@ -517,6 +539,10 @@ func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectD
 
 	if len(options.StatusIn) > 0 {
 		q = q.Where(goqu.C(COLUMN_STATUS).In(options.StatusIn))
+	}
+
+	if options.Slug != "" {
+		q = q.Where(goqu.C(COLUMN_SLUG).Eq(options.Slug))
 	}
 
 	if options.Search != "" {

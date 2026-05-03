@@ -221,6 +221,67 @@ func TestBlogRepositoryBlogPostFindByOldSlug(t *testing.T) {
 	}
 }
 
+func TestBlogRepositoryBlogPostFindBySlug(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		DB:                 db,
+		AutomigrateEnabled: true,
+	})
+
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	post := NewPost().
+		SetStatus(POST_STATUS_PUBLISHED).
+		SetTitle("My Test Post").
+		SetContent("Post Content").
+		SetAuthorID("Post Author ID").
+		SetSlug("my-test-post")
+
+	err = store.PostCreate(context.Background(), post)
+	if err != nil {
+		t.Error("unexpected error:", err)
+	}
+
+	// Find by slug
+	postFound, errFind := store.PostFindBySlug(context.Background(), "my-test-post")
+	if errFind != nil {
+		t.Error("unexpected error:", errFind)
+	}
+	if postFound == nil {
+		t.Error("Post MUST NOT be nil")
+	}
+
+	if postFound.GetTitle() != "My Test Post" {
+		t.Error("Post title MUST BE 'My Test Post', found: ", postFound.GetTitle())
+	}
+
+	if postFound.GetSlug() != "my-test-post" {
+		t.Error("Post slug MUST BE 'my-test-post', found: ", postFound.GetSlug())
+	}
+
+	// Test non-existent slug
+	notFound, errNotFound := store.PostFindBySlug(context.Background(), "non-existent-slug")
+	if errNotFound != nil {
+		t.Error("unexpected error for non-existent slug:", errNotFound)
+	}
+	if notFound != nil {
+		t.Error("Post SHOULD be nil for non-existent slug")
+	}
+
+	// Test empty slug
+	emptySlug, errEmptySlug := store.PostFindBySlug(context.Background(), "")
+	if errEmptySlug == nil {
+		t.Error("expected error for empty slug, got nil")
+	}
+	if emptySlug != nil {
+		t.Error("Post SHOULD be nil for empty slug")
+	}
+}
+
 func TestStorePostListAndCount(t *testing.T) {
 	db := initDB()
 
