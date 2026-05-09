@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/dromara/carbon/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPostMarshalToVersioning(t *testing.T) {
@@ -19,25 +17,47 @@ func TestPostMarshalToVersioning(t *testing.T) {
 
 	// Test marshaling
 	result, err := post.MarshalToVersioning()
-	require.NoError(t, err)
-	require.NotEmpty(t, result)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if result == "" {
+		t.Fatalf("Expected non-empty result")
+	}
 
 	// Parse the result to verify structure
 	var versionedData map[string]string
 	err = json.Unmarshal([]byte(result), &versionedData)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Verify that timestamp fields are excluded
-	assert.NotContains(t, versionedData, COLUMN_CREATED_AT)
-	assert.NotContains(t, versionedData, COLUMN_UPDATED_AT)
-	assert.NotContains(t, versionedData, COLUMN_SOFT_DELETED_AT)
+	if _, ok := versionedData[COLUMN_CREATED_AT]; ok {
+		t.Errorf("Expected %s to not be in versioned data", COLUMN_CREATED_AT)
+	}
+	if _, ok := versionedData[COLUMN_UPDATED_AT]; ok {
+		t.Errorf("Expected %s to not be in versioned data", COLUMN_UPDATED_AT)
+	}
+	if _, ok := versionedData[COLUMN_SOFT_DELETED_AT]; ok {
+		t.Errorf("Expected %s to not be in versioned data", COLUMN_SOFT_DELETED_AT)
+	}
 
 	// Verify that important fields are included
-	assert.Equal(t, "Test Post", versionedData["title"])
-	assert.Equal(t, "Test Content", versionedData["content"])
-	assert.Equal(t, "Test Summary", versionedData["summary"])
-	assert.Equal(t, POST_STATUS_PUBLISHED, versionedData["status"])
-	assert.Equal(t, YES, versionedData["featured"])
+	if versionedData["title"] != "Test Post" {
+		t.Errorf("Expected title to be 'Test Post', got %q", versionedData["title"])
+	}
+	if versionedData["content"] != "Test Content" {
+		t.Errorf("Expected content to be 'Test Content', got %q", versionedData["content"])
+	}
+	if versionedData["summary"] != "Test Summary" {
+		t.Errorf("Expected summary to be 'Test Summary', got %q", versionedData["summary"])
+	}
+	if versionedData["status"] != POST_STATUS_PUBLISHED {
+		t.Errorf("Expected status to be %s, got %s", POST_STATUS_PUBLISHED, versionedData["status"])
+	}
+	if versionedData["featured"] != YES {
+		t.Errorf("Expected featured to be %s, got %s", YES, versionedData["featured"])
+	}
 }
 
 func TestPostUnmarshalFromVersioning(t *testing.T) {
@@ -51,28 +71,42 @@ func TestPostUnmarshalFromVersioning(t *testing.T) {
 
 	// Marshal to versioning format
 	versionedData, err := originalPost.MarshalToVersioning()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Create new post and unmarshal from versioning
 	newPost := NewPost()
 	err = newPost.UnmarshalFromVersioning(versionedData)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Verify data was restored correctly
 	title := newPost.GetTitle()
-	assert.Equal(t, "Original Title", title)
+	if title != "Original Title" {
+		t.Errorf("Expected title to be 'Original Title', got %q", title)
+	}
 
 	content := newPost.GetContent()
-	assert.Equal(t, "Original Content", content)
+	if content != "Original Content" {
+		t.Errorf("Expected content to be 'Original Content', got %q", content)
+	}
 
 	summary := newPost.GetSummary()
-	assert.Equal(t, "Original Summary", summary)
+	if summary != "Original Summary" {
+		t.Errorf("Expected summary to be 'Original Summary', got %q", summary)
+	}
 
 	status := newPost.GetStatus()
-	assert.Equal(t, POST_STATUS_DRAFT, status)
+	if status != POST_STATUS_DRAFT {
+		t.Errorf("Expected status to be %s, got %s", POST_STATUS_DRAFT, status)
+	}
 
 	featured := newPost.GetFeatured()
-	assert.Equal(t, NO, featured)
+	if featured != NO {
+		t.Errorf("Expected featured to be %s, got %s", NO, featured)
+	}
 
 	// Verify that updated_at was set to current time
 	updatedAt := newPost.GetUpdatedAt()
@@ -82,7 +116,9 @@ func TestPostUnmarshalFromVersioning(t *testing.T) {
 
 	// Should be very recent (within 1 second)
 	now := carbon.Now(carbon.UTC)
-	assert.True(t, now.DiffInSeconds(parsedTime) <= 1)
+	if now.DiffInSeconds(parsedTime) > 1 {
+		t.Errorf("Expected updated_at to be within 1 second of now")
+	}
 }
 
 func TestPostUnmarshalFromVersioningWithInvalidTimestamps(t *testing.T) {
@@ -97,19 +133,27 @@ func TestPostUnmarshalFromVersioningWithInvalidTimestamps(t *testing.T) {
 	}
 
 	data, err := json.Marshal(versionedData)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Create post and unmarshal
 	post := NewPost()
 	err = post.UnmarshalFromVersioning(string(data))
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Verify data was restored (except timestamps)
 	title := post.GetTitle()
-	assert.Equal(t, "Test Title", title)
+	if title != "Test Title" {
+		t.Errorf("Expected title to be 'Test Title', got %q", title)
+	}
 
 	status := post.GetStatus()
-	assert.Equal(t, POST_STATUS_PUBLISHED, status)
+	if status != POST_STATUS_PUBLISHED {
+		t.Errorf("Expected status to be %s, got %s", POST_STATUS_PUBLISHED, status)
+	}
 
 	// Verify that updated_at was set to current time (not the invalid timestamp)
 	updatedAt := post.GetUpdatedAt()
@@ -117,7 +161,9 @@ func TestPostUnmarshalFromVersioningWithInvalidTimestamps(t *testing.T) {
 	parsedTime := carbon.Parse(updatedAt)
 
 	now := carbon.Now(carbon.UTC)
-	assert.True(t, now.DiffInSeconds(parsedTime) <= 1)
+	if now.DiffInSeconds(parsedTime) > 1 {
+		t.Errorf("Expected updated_at to be within 1 second of now")
+	}
 }
 
 func TestPostUnmarshalFromVersioningEmptyData(t *testing.T) {
@@ -125,11 +171,15 @@ func TestPostUnmarshalFromVersioningEmptyData(t *testing.T) {
 
 	// Test with empty string
 	err := post.UnmarshalFromVersioning("")
-	assert.Error(t, err)
+	if err == nil {
+		t.Errorf("Expected error for empty input")
+	}
 
 	// Test with invalid JSON
 	err = post.UnmarshalFromVersioning("{invalid json}")
-	assert.Error(t, err)
+	if err == nil {
+		t.Errorf("Expected error for invalid JSON")
+	}
 }
 
 func TestPostVersioningRoundTrip(t *testing.T) {
@@ -152,56 +202,90 @@ func TestPostVersioningRoundTrip(t *testing.T) {
 		"custom_field1": "value1",
 		"custom_field2": "value2",
 	})
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Marshal to versioning
 	versionedData, err := originalPost.MarshalToVersioning()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Create new post and restore from versioning
 	newPost := NewPost()
 	err = newPost.UnmarshalFromVersioning(versionedData)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Verify all fields were restored correctly
 	title := newPost.GetTitle()
-	assert.Equal(t, "Round Trip Test", title)
+	if title != "Round Trip Test" {
+		t.Errorf("Expected title to be 'Round Trip Test', got %q", title)
+	}
 
 	content := newPost.GetContent()
-	assert.Equal(t, "This is test content for round trip testing", content)
+	if content != "This is test content for round trip testing" {
+		t.Errorf("Expected content to be 'This is test content for round trip testing', got %q", content)
+	}
 
 	summary := newPost.GetSummary()
-	assert.Equal(t, "Test summary", summary)
+	if summary != "Test summary" {
+		t.Errorf("Expected summary to be 'Test summary', got %q", summary)
+	}
 
 	status := newPost.GetStatus()
-	assert.Equal(t, POST_STATUS_PUBLISHED, status)
+	if status != POST_STATUS_PUBLISHED {
+		t.Errorf("Expected status to be %s, got %s", POST_STATUS_PUBLISHED, status)
+	}
 
 	featured := newPost.GetFeatured()
-	assert.Equal(t, YES, featured)
+	if featured != YES {
+		t.Errorf("Expected featured to be %s, got %s", YES, featured)
+	}
 
 	metaDesc := newPost.GetMetaDescription()
-	assert.Equal(t, "Meta description", metaDesc)
+	if metaDesc != "Meta description" {
+		t.Errorf("Expected meta description to be 'Meta description', got %q", metaDesc)
+	}
 
 	metaKeywords := newPost.GetMetaKeywords()
-	assert.Equal(t, "test,keywords", metaKeywords)
+	if metaKeywords != "test,keywords" {
+		t.Errorf("Expected meta keywords to be 'test,keywords', got %q", metaKeywords)
+	}
 
 	metaRobots := newPost.GetMetaRobots()
-	assert.Equal(t, "index,follow", metaRobots)
+	if metaRobots != "index,follow" {
+		t.Errorf("Expected meta robots to be 'index,follow', got %q", metaRobots)
+	}
 
 	canonicalURL := newPost.GetCanonicalURL()
-	assert.Equal(t, "https://example.com/test", canonicalURL)
+	if canonicalURL != "https://example.com/test" {
+		t.Errorf("Expected canonical URL to be 'https://example.com/test', got %q", canonicalURL)
+	}
 
 	imageUrl := newPost.GetImageUrl()
-	assert.Equal(t, "https://example.com/image.jpg", imageUrl)
+	if imageUrl != "https://example.com/image.jpg" {
+		t.Errorf("Expected image URL to be 'https://example.com/image.jpg', got %q", imageUrl)
+	}
 
 	memo := newPost.GetMemo()
-	assert.Equal(t, "Test memo", memo)
+	if memo != "Test memo" {
+		t.Errorf("Expected memo to be 'Test memo', got %q", memo)
+	}
 
 	// Verify metas
 	metas, err := newPost.GetMetas()
-	require.NoError(t, err)
-	assert.Equal(t, "value1", metas["custom_field1"])
-	assert.Equal(t, "value2", metas["custom_field2"])
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if metas["custom_field1"] != "value1" {
+		t.Errorf("Expected custom_field1 to be 'value1', got %q", metas["custom_field1"])
+	}
+	if metas["custom_field2"] != "value2" {
+		t.Errorf("Expected custom_field2 to be 'value2', got %q", metas["custom_field2"])
+	}
 }
 
 func TestPostVersioningExcludesTimestamps(t *testing.T) {
@@ -217,18 +301,32 @@ func TestPostVersioningExcludesTimestamps(t *testing.T) {
 
 	// Marshal to versioning
 	versionedData, err := post.MarshalToVersioning()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Parse and verify timestamps are excluded
 	var data map[string]string
 	err = json.Unmarshal([]byte(versionedData), &data)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
-	assert.NotContains(t, data, COLUMN_CREATED_AT)
-	assert.NotContains(t, data, COLUMN_UPDATED_AT)
-	assert.NotContains(t, data, COLUMN_SOFT_DELETED_AT)
-	assert.Contains(t, data, "title")
-	assert.Equal(t, "Timestamp Test", data["title"])
+	if _, ok := data[COLUMN_CREATED_AT]; ok {
+		t.Errorf("Expected %s to not be in data", COLUMN_CREATED_AT)
+	}
+	if _, ok := data[COLUMN_UPDATED_AT]; ok {
+		t.Errorf("Expected %s to not be in data", COLUMN_UPDATED_AT)
+	}
+	if _, ok := data[COLUMN_SOFT_DELETED_AT]; ok {
+		t.Errorf("Expected %s to not be in data", COLUMN_SOFT_DELETED_AT)
+	}
+	if _, ok := data["title"]; !ok {
+		t.Errorf("Expected title to be in data")
+	}
+	if data["title"] != "Timestamp Test" {
+		t.Errorf("Expected title to be 'Timestamp Test', got %q", data["title"])
+	}
 }
 
 func BenchmarkPostMarshalToVersioning(b *testing.B) {

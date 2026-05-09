@@ -7,11 +7,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/dracory/blogstore"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 )
 
@@ -20,34 +20,68 @@ func TestPostContentTypeMethods(t *testing.T) {
 	post := blogstore.NewPost()
 
 	// Test default content type
-	assert.Equal(t, "", post.GetContentType(), "Default content type should be empty")
-	assert.False(t, post.IsContentMarkdown(), "Should not be markdown by default")
-	assert.False(t, post.IsContentHtml(), "Should not be HTML by default")
-	assert.False(t, post.IsContentPlainText(), "Should not be plain text by default")
+	if post.GetContentType() != "" {
+		t.Errorf("Default content type should be empty, got %q", post.GetContentType())
+	}
+	if post.IsContentMarkdown() {
+		t.Errorf("Should not be markdown by default")
+	}
+	if post.IsContentHtml() {
+		t.Errorf("Should not be HTML by default")
+	}
+	if post.IsContentPlainText() {
+		t.Errorf("Should not be plain text by default")
+	}
 
 	// Test SetContentType with markdown
 	post.SetContentType(blogstore.POST_CONTENT_TYPE_MARKDOWN)
-	assert.Equal(t, blogstore.POST_CONTENT_TYPE_MARKDOWN, post.GetContentType())
-	assert.True(t, post.IsContentMarkdown(), "Should be markdown")
-	assert.False(t, post.IsContentHtml(), "Should not be HTML")
-	assert.False(t, post.IsContentPlainText(), "Should not be plain text")
+	if post.GetContentType() != blogstore.POST_CONTENT_TYPE_MARKDOWN {
+		t.Errorf("Expected content type to be %s, got %s", blogstore.POST_CONTENT_TYPE_MARKDOWN, post.GetContentType())
+	}
+	if !post.IsContentMarkdown() {
+		t.Errorf("Should be markdown")
+	}
+	if post.IsContentHtml() {
+		t.Errorf("Should not be HTML")
+	}
+	if post.IsContentPlainText() {
+		t.Errorf("Should not be plain text")
+	}
 
 	// Test SetContentType with HTML
 	post.SetContentType(blogstore.POST_CONTENT_TYPE_HTML)
-	assert.Equal(t, blogstore.POST_CONTENT_TYPE_HTML, post.GetContentType())
-	assert.False(t, post.IsContentMarkdown(), "Should not be markdown")
-	assert.True(t, post.IsContentHtml(), "Should be HTML")
-	assert.False(t, post.IsContentPlainText(), "Should not be plain text")
+	if post.GetContentType() != blogstore.POST_CONTENT_TYPE_HTML {
+		t.Errorf("Expected content type to be %s, got %s", blogstore.POST_CONTENT_TYPE_HTML, post.GetContentType())
+	}
+	if post.IsContentMarkdown() {
+		t.Errorf("Should not be markdown")
+	}
+	if !post.IsContentHtml() {
+		t.Errorf("Should be HTML")
+	}
+	if post.IsContentPlainText() {
+		t.Errorf("Should not be plain text")
+	}
 
 	// Test SetContentType with plain text
 	post.SetContentType(blogstore.POST_CONTENT_TYPE_PLAIN_TEXT)
-	assert.Equal(t, blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, post.GetContentType())
-	assert.False(t, post.IsContentMarkdown(), "Should not be markdown")
-	assert.False(t, post.IsContentHtml(), "Should not be HTML")
-	assert.True(t, post.IsContentPlainText(), "Should be plain text")
+	if post.GetContentType() != blogstore.POST_CONTENT_TYPE_PLAIN_TEXT {
+		t.Errorf("Expected content type to be %s, got %s", blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, post.GetContentType())
+	}
+	if post.IsContentMarkdown() {
+		t.Errorf("Should not be markdown")
+	}
+	if post.IsContentHtml() {
+		t.Errorf("Should not be HTML")
+	}
+	if !post.IsContentPlainText() {
+		t.Errorf("Should be plain text")
+	}
 
 	// Test that it's stored in metas
-	assert.Equal(t, blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, post.GetMeta("content_type"))
+	if post.GetMeta("content_type") != blogstore.POST_CONTENT_TYPE_PLAIN_TEXT {
+		t.Errorf("Expected content_type meta to be %s, got %s", blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, post.GetMeta("content_type"))
+	}
 }
 
 func TestContentTypeToEditor(t *testing.T) {
@@ -86,7 +120,9 @@ func TestContentTypeToEditor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := contentTypeToEditor(tt.contentType)
-			assert.Equal(t, tt.expected, result)
+			if result != tt.expected {
+				t.Errorf("Expected %s, got %s", tt.expected, result)
+			}
 		})
 	}
 }
@@ -169,7 +205,9 @@ func TestPostCreateWithContentType(t *testing.T) {
 			mcp.Handler(w, req)
 
 			// Check response
-			assert.Equal(t, http.StatusOK, w.Code)
+			if w.Code != http.StatusOK {
+				t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+			}
 
 			var response struct {
 				JSONRPC string `json:"jsonrpc"`
@@ -182,28 +220,42 @@ func TestPostCreateWithContentType(t *testing.T) {
 				} `json:"result"`
 			}
 			err = json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
 
 			// Parse the created post ID
 			var createResult map[string]any
 			err = json.Unmarshal([]byte(response.Result.Content[0].Text), &createResult)
-			require.NoError(t, err)
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
 
 			postID, ok := createResult["id"].(string)
-			require.True(t, ok, "Post ID should be a string")
+			if !ok {
+				t.Fatalf("Post ID should be a string")
+			}
 
 			// Retrieve the post to verify content_type was stored
 			post, err := store.PostFindByID(context.Background(), postID)
-			require.NoError(t, err)
-			require.NotNil(t, post)
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+			if post == nil {
+				t.Fatalf("Expected non-nil post")
+			}
 
 			// Check content_type using the new method
 			storedContentType := post.GetContentType()
-			assert.Equal(t, tt.expected, storedContentType)
+			if storedContentType != tt.expected {
+				t.Errorf("Expected content type %s, got %s", tt.expected, storedContentType)
+			}
 
 			// Check editor was set correctly
 			expectedEditor := contentTypeToEditor(tt.expected)
-			assert.Equal(t, expectedEditor, post.GetEditor())
+			if post.GetEditor() != expectedEditor {
+				t.Errorf("Expected editor %s, got %s", expectedEditor, post.GetEditor())
+			}
 		})
 	}
 }
@@ -235,10 +287,14 @@ func TestPostUpdateWithContentType(t *testing.T) {
 	post.SetEditor(blogstore.POST_EDITOR_TEXTAREA)
 
 	err = store.PostCreate(context.Background(), post)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Verify post was created and has an ID
-	require.NotEmpty(t, post.GetID(), "Post should have an ID after creation")
+	if post.GetID() == "" {
+		t.Fatalf("Post should have an ID after creation")
+	}
 
 	// Test updating content_type
 	tests := []struct {
@@ -271,8 +327,12 @@ func TestPostUpdateWithContentType(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Verify post exists before update
 			existingPost, err := store.PostFindByID(context.Background(), post.GetID())
-			require.NoError(t, err)
-			require.NotNil(t, existingPost, "Post should exist before update")
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+			if existingPost == nil {
+				t.Fatalf("Post should exist before update")
+			}
 			t.Logf("Updating post with ID: %s", post.GetID())
 
 			// Update request using post_upsert
@@ -298,23 +358,35 @@ func TestPostUpdateWithContentType(t *testing.T) {
 			mcp.Handler(w, req)
 
 			// Check response
-			assert.Equal(t, http.StatusOK, w.Code)
+			if w.Code != http.StatusOK {
+				t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+			}
 
 			// Retrieve updated post
 			updatedPost, err := store.PostFindByID(context.Background(), post.GetID())
-			require.NoError(t, err)
-			require.NotNil(t, updatedPost)
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+			if updatedPost == nil {
+				t.Fatalf("Expected non-nil post")
+			}
 
 			// Check content_type was updated using the new method
 			storedContentType := updatedPost.GetContentType()
-			assert.Equal(t, tt.expected, storedContentType)
+			if storedContentType != tt.expected {
+				t.Errorf("Expected content type %s, got %s", tt.expected, storedContentType)
+			}
 
 			// Check editor was updated correctly
 			expectedEditor := contentTypeToEditor(tt.expected)
-			assert.Equal(t, expectedEditor, updatedPost.GetEditor())
+			if updatedPost.GetEditor() != expectedEditor {
+				t.Errorf("Expected editor %s, got %s", expectedEditor, updatedPost.GetEditor())
+			}
 
 			// Check content was updated
-			assert.Equal(t, tt.content, updatedPost.GetContent())
+			if updatedPost.GetContent() != tt.content {
+				t.Errorf("Expected content %q, got %q", tt.content, updatedPost.GetContent())
+			}
 		})
 	}
 }
@@ -361,7 +433,9 @@ func TestPostCreateWithoutContentType(t *testing.T) {
 	mcp.Handler(w, req)
 
 	// Check response
-	assert.Equal(t, http.StatusOK, w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+	}
 
 	var response struct {
 		JSONRPC string `json:"jsonrpc"`
@@ -374,27 +448,41 @@ func TestPostCreateWithoutContentType(t *testing.T) {
 		} `json:"result"`
 	}
 	err = json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err)
+	if err != nil {
+		t.Errorf("Failed to unmarshal response: %v", err)
+	}
 
 	// Parse the created post ID
 	var createResult map[string]any
 	err = json.Unmarshal([]byte(response.Result.Content[0].Text), &createResult)
-	require.NoError(t, err)
+	if err != nil {
+		t.Errorf("Failed to unmarshal create result: %v", err)
+	}
 
 	postID, ok := createResult["id"].(string)
-	require.True(t, ok, "Post ID should be a string")
+	if !ok {
+		t.Errorf("Post ID should be a string")
+	}
 
 	// Retrieve the post to verify default content_type
 	createdPost, err := store.PostFindByID(context.Background(), postID)
-	require.NoError(t, err)
-	require.NotNil(t, createdPost)
+	if err != nil {
+		t.Errorf("Failed to retrieve post: %v", err)
+	}
+	if createdPost == nil {
+		t.Errorf("Expected non-nil post")
+	}
 
 	// Check default content_type was set using the new method
 	storedContentType := createdPost.GetContentType()
-	assert.Equal(t, blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, storedContentType)
+	if storedContentType != blogstore.POST_CONTENT_TYPE_PLAIN_TEXT {
+		t.Errorf("Expected content type %s, got %s", blogstore.POST_CONTENT_TYPE_PLAIN_TEXT, storedContentType)
+	}
 
 	// Check default editor was set
-	assert.Equal(t, blogstore.POST_EDITOR_TEXTAREA, createdPost.GetEditor())
+	if createdPost.GetEditor() != blogstore.POST_EDITOR_TEXTAREA {
+		t.Errorf("Expected editor %s, got %s", blogstore.POST_EDITOR_TEXTAREA, createdPost.GetEditor())
+	}
 }
 
 func TestBlogSchemaIncludesContentType(t *testing.T) {
@@ -434,7 +522,9 @@ func TestBlogSchemaIncludesContentType(t *testing.T) {
 	mcp.Handler(w, req)
 
 	// Check response
-	assert.Equal(t, http.StatusOK, w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+	}
 
 	var response struct {
 		JSONRPC string `json:"jsonrpc"`
@@ -447,29 +537,41 @@ func TestBlogSchemaIncludesContentType(t *testing.T) {
 		} `json:"result"`
 	}
 	err = json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err)
+	if err != nil {
+		t.Errorf("Failed to unmarshal response: %v", err)
+	}
 
 	// Parse schema
 	var schema map[string]any
 	err = json.Unmarshal([]byte(response.Result.Content[0].Text), &schema)
-	require.NoError(t, err)
+	if err != nil {
+		t.Errorf("Failed to unmarshal schema: %v", err)
+	}
 
 	// Check content_type field is in schema
 	entities, ok := schema["entities"].(map[string]any)
-	require.True(t, ok)
+	if !ok {
+		t.Fatalf("Expected entities to be a map")
+	}
 
 	postEntity, ok := entities["post"].(map[string]any)
-	require.True(t, ok)
+	if !ok {
+		t.Fatalf("Expected post to be a map")
+	}
 
 	fields, ok := postEntity["fields"].([]any)
-	require.True(t, ok)
+	if !ok {
+		t.Fatalf("Expected fields to be a slice")
+	}
 
 	// Find content_type field
 	var contentTypeField map[string]any
 	found := false
 	for _, field := range fields {
 		fieldMap, ok := field.(map[string]any)
-		require.True(t, ok)
+		if !ok {
+			t.Fatalf("Expected field to be a map")
+		}
 
 		if name, ok := fieldMap["name"].(string); ok && name == "content_type" {
 			contentTypeField = fieldMap
@@ -478,8 +580,12 @@ func TestBlogSchemaIncludesContentType(t *testing.T) {
 		}
 	}
 
-	require.True(t, found, "content_type field should be in schema")
-	assert.Equal(t, "string", contentTypeField["type"])
+	if !found {
+		t.Fatalf("content_type field should be in schema")
+	}
+	if contentTypeField["type"] != "string" {
+		t.Errorf("Expected type to be string, got %v", contentTypeField["type"])
+	}
 	// Check enum values - handle type conversion from JSON unmarshaling
 	enumInterface := contentTypeField["enum"]
 	enumSlice := make([]string, 0)
@@ -490,8 +596,13 @@ func TestBlogSchemaIncludesContentType(t *testing.T) {
 			}
 		}
 	}
-	assert.Equal(t, []string{"markdown", "html", "plain_text"}, enumSlice)
-	assert.Contains(t, contentTypeField["description"], "Content format type")
+	if !reflect.DeepEqual(enumSlice, []string{"markdown", "html", "plain_text"}) {
+		t.Errorf("Expected enum to be [markdown, html, plain_text], got %v", enumSlice)
+	}
+	desc, ok := contentTypeField["description"].(string)
+	if !ok || !strings.Contains(desc, "Content format type") {
+		t.Errorf("Expected description to contain 'Content format type', got %v", contentTypeField["description"])
+	}
 }
 
 func TestContentTypeValidation(t *testing.T) {
@@ -529,7 +640,9 @@ func TestContentTypeValidation(t *testing.T) {
 	mcp.Handler(w, req)
 
 	// Check response
-	assert.Equal(t, http.StatusOK, w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+	}
 
 	var response struct {
 		JSONRPC string `json:"jsonrpc"`
@@ -542,7 +655,9 @@ func TestContentTypeValidation(t *testing.T) {
 		} `json:"result"`
 	}
 	err = json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	// Find post_upsert tool and check content_type validation
 	var postUpsertTool struct {
@@ -558,13 +673,19 @@ func TestContentTypeValidation(t *testing.T) {
 		}
 	}
 
-	require.True(t, found, "post_upsert tool should be found")
+	if !found {
+		t.Fatalf("post_upsert tool should be found")
+	}
 
 	properties, ok := postUpsertTool.InputSchema["properties"].(map[string]any)
-	require.True(t, ok)
+	if !ok {
+		t.Fatalf("Expected properties to be a map")
+	}
 
 	contentType, ok := properties["content_type"].(map[string]any)
-	require.True(t, ok)
+	if !ok {
+		t.Fatalf("Expected content_type to be a map")
+	}
 
 	// Check enum values - handle type conversion from JSON unmarshaling
 	enumInterface := contentType["enum"]
@@ -576,11 +697,19 @@ func TestContentTypeValidation(t *testing.T) {
 			}
 		}
 	}
-	require.True(t, len(enumSlice) > 0, "enum should have values")
-	assert.Equal(t, []string{"markdown", "html", "plain_text"}, enumSlice)
+	if len(enumSlice) == 0 {
+		t.Fatalf("enum should have values")
+	}
+	if !reflect.DeepEqual(enumSlice, []string{"markdown", "html", "plain_text"}) {
+		t.Errorf("Expected enum to be [markdown, html, plain_text], got %v", enumSlice)
+	}
 
 	// Check default value
 	defaultValue, ok := contentType["default"].(string)
-	require.True(t, ok)
-	assert.Equal(t, "plain_text", defaultValue)
+	if !ok {
+		t.Fatalf("Expected default to be a string")
+	}
+	if defaultValue != "plain_text" {
+		t.Errorf("Expected default to be 'plain_text', got %s", defaultValue)
+	}
 }
