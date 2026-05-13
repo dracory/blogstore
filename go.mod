@@ -12,7 +12,7 @@ require (
 	github.com/dracory/versionstore v0.9.0
 	github.com/dromara/carbon/v2 v2.6.16
 	github.com/samber/lo v1.53.0
-	modernc.org/sqlite v1.50.0
+	modernc.org/sqlite v1.50.1
 )
 
 require (

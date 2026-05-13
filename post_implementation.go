@@ -511,8 +511,17 @@ func (o *postImplementation) GetDataChanged() map[string]string {
 }
 
 // MarkAsNotDirty clears the dirty state of the post.
-func (o *postImplementation) MarkAsNotDirty() {
-	o.DataObject.MarkAsNotDirty()
+// If no columns specified, marks all fields as not dirty.
+// If columns specified, marks only those columns as not dirty.
+func (o *postImplementation) MarkAsNotDirty(columns ...string) {
+	o.DataObject.MarkAsNotDirty(columns...)
+}
+
+// MarkAsDirty marks the post as dirty.
+// If no columns specified, marks all fields as dirty.
+// If columns specified, marks only those columns as dirty.
+func (o *postImplementation) MarkAsDirty(columns ...string) {
+	o.DataObject.MarkAsDirty(columns...)
 }
 
 // Get retrieves a value by key from the post data.

@@ -157,8 +157,17 @@ func (o *taxonomyImplementation) GetDataChanged() map[string]string {
 }
 
 // MarkAsNotDirty clears the dirty state of the taxonomy.
-func (o *taxonomyImplementation) MarkAsNotDirty() {
-	o.DataObject.MarkAsNotDirty()
+// If no columns specified, marks all fields as not dirty.
+// If columns specified, marks only those columns as not dirty.
+func (o *taxonomyImplementation) MarkAsNotDirty(columns ...string) {
+	o.DataObject.MarkAsNotDirty(columns...)
+}
+
+// MarkAsDirty marks the taxonomy as dirty.
+// If no columns specified, marks all fields as dirty.
+// If columns specified, marks only those columns as dirty.
+func (o *taxonomyImplementation) MarkAsDirty(columns ...string) {
+	o.DataObject.MarkAsDirty(columns...)
 }
 
 // Get retrieves a value by key from the taxonomy data.
@@ -397,8 +406,17 @@ func (o *termImplementation) GetDataChanged() map[string]string {
 }
 
 // MarkAsNotDirty clears the dirty state of the term.
-func (o *termImplementation) MarkAsNotDirty() {
-	o.DataObject.MarkAsNotDirty()
+// If no columns specified, marks all fields as not dirty.
+// If columns specified, marks only those columns as not dirty.
+func (o *termImplementation) MarkAsNotDirty(columns ...string) {
+	o.DataObject.MarkAsNotDirty(columns...)
+}
+
+// MarkAsDirty marks the term as dirty.
+// If no columns specified, marks all fields as dirty.
+// If columns specified, marks only those columns as dirty.
+func (o *termImplementation) MarkAsDirty(columns ...string) {
+	o.DataObject.MarkAsDirty(columns...)
 }
 
 // Get retrieves a value by key from the term data.
@@ -578,8 +596,17 @@ func (o *termRelationImplementation) GetDataChanged() map[string]string {
 }
 
 // MarkAsNotDirty clears the dirty state of the term relation.
-func (o *termRelationImplementation) MarkAsNotDirty() {
-	o.DataObject.MarkAsNotDirty()
+// If no columns specified, marks all fields as not dirty.
+// If columns specified, marks only those columns as not dirty.
+func (o *termRelationImplementation) MarkAsNotDirty(columns ...string) {
+	o.DataObject.MarkAsNotDirty(columns...)
+}
+
+// MarkAsDirty marks the term relation as dirty.
+// If no columns specified, marks all fields as dirty.
+// If columns specified, marks only those columns as dirty.
+func (o *termRelationImplementation) MarkAsDirty(columns ...string) {
+	o.DataObject.MarkAsDirty(columns...)
 }
 
 // Get retrieves a value by key from the term relation data.

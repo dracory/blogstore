@@ -55,7 +55,14 @@ type TaxonomyInterface interface {
 	// DataObject methods (from embedded dataobject.DataObject)
 	GetData() map[string]string
 	GetDataChanged() map[string]string
-	MarkAsNotDirty()
+	// MarkAsNotDirty clears the dirty state of the taxonomy.
+	// If no columns specified, marks all fields as not dirty.
+	// If columns specified, marks only those columns as not dirty.
+	MarkAsNotDirty(columns ...string)
+	// MarkAsDirty marks the taxonomy as dirty.
+	// If no columns specified, marks all fields as dirty.
+	// If columns specified, marks only those columns as dirty.
+	MarkAsDirty(columns ...string)
 	Get(key string) string
 	Set(key string, value string)
 	Hydrate(data map[string]string)
@@ -138,7 +145,13 @@ type TermInterface interface {
 	// GetDataChanged returns only the fields that have been modified.
 	GetDataChanged() map[string]string
 	// MarkAsNotDirty clears the dirty state of the term.
-	MarkAsNotDirty()
+	// If no columns specified, marks all fields as not dirty.
+	// If columns specified, marks only those columns as not dirty.
+	MarkAsNotDirty(columns ...string)
+	// MarkAsDirty marks the term as dirty.
+	// If no columns specified, marks all fields as dirty.
+	// If columns specified, marks only those columns as dirty.
+	MarkAsDirty(columns ...string)
 	// Get retrieves a value by key from the term data.
 	Get(key string) string
 	// Set stores a value by key in the term data.
@@ -200,7 +213,13 @@ type TermRelationInterface interface {
 	// GetDataChanged returns only the fields that have been modified.
 	GetDataChanged() map[string]string
 	// MarkAsNotDirty clears the dirty state of the term relation.
-	MarkAsNotDirty()
+	// If no columns specified, marks all fields as not dirty.
+	// If columns specified, marks only those columns as not dirty.
+	MarkAsNotDirty(columns ...string)
+	// MarkAsDirty marks the term relation as dirty.
+	// If no columns specified, marks all fields as dirty.
+	// If columns specified, marks only those columns as dirty.
+	MarkAsDirty(columns ...string)
 	// Get retrieves a value by key from the term relation data.
 	Get(key string) string
 	// Set stores a value by key in the term relation data.

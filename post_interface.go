@@ -199,7 +199,13 @@ type PostInterface interface {
 	// GetDataChanged returns only the fields that have been modified.
 	GetDataChanged() map[string]string
 	// MarkAsNotDirty clears the dirty state of the post.
-	MarkAsNotDirty()
+	// If no columns specified, marks all fields as not dirty.
+	// If columns specified, marks only those columns as not dirty.
+	MarkAsNotDirty(columns ...string)
+	// MarkAsDirty marks the post as dirty.
+	// If no columns specified, marks all fields as dirty.
+	// If columns specified, marks only those columns as dirty.
+	MarkAsDirty(columns ...string)
 	// Get retrieves a value by key from the post data.
 	Get(key string) string
 	// Set stores a value by key in the post data.
