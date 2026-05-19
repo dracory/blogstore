@@ -9,7 +9,7 @@ require (
 	github.com/dracory/sb v0.24.0
 	github.com/dracory/str v0.18.0
 	github.com/dracory/uid v1.9.0
-	github.com/dracory/versionstore v1.0.0
+	github.com/dracory/versionstore v1.1.0
 	github.com/dromara/carbon/v2 v2.6.16
 	github.com/samber/lo v1.53.0
 	modernc.org/sqlite v1.50.1

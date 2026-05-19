@@ -29,9 +29,9 @@ type StoreInterface interface {
 	SetTermRelationTableName(tableName string)
 
 	// MigrateDown drops the blog store tables
-	MigrateDown(tx ...*sql.Tx) error
+	MigrateDown(ctx context.Context, tx ...*sql.Tx) error
 	// MigrateUp creates the blog store tables
-	MigrateUp(tx ...*sql.Tx) error
+	MigrateUp(ctx context.Context, tx ...*sql.Tx) error
 
 	// EnableDebug toggles debug mode logging for database operations.
 	// Returns the StoreInterface to allow method chaining.

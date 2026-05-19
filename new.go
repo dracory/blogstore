@@ -1,6 +1,7 @@
 package blogstore
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -92,7 +93,7 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 	store.timeoutSeconds = 2 * 60 * 60 // 2 hours
 
 	if store.automigrateEnabled {
-		store.MigrateUp()
+		store.MigrateUp(context.Background())
 	}
 
 	return store, nil
