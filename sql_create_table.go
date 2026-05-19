@@ -229,3 +229,31 @@ func (st *storeImplementation) sqlCreateTermRelationTable() (string, error) {
 
 	return sql, err
 }
+
+// sqlDropPostTable returns SQL for dropping the post table
+func (st *storeImplementation) sqlDropPostTable() (string, error) {
+	return sb.NewBuilder(sb.DatabaseDriverName(st.db)).
+		Table(st.postTableName).
+		Drop()
+}
+
+// sqlDropTaxonomyTable returns SQL for dropping the taxonomy table
+func (st *storeImplementation) sqlDropTaxonomyTable() (string, error) {
+	return sb.NewBuilder(sb.DatabaseDriverName(st.db)).
+		Table(st.taxonomyTableName).
+		Drop()
+}
+
+// sqlDropTermTable returns SQL for dropping the term table
+func (st *storeImplementation) sqlDropTermTable() (string, error) {
+	return sb.NewBuilder(sb.DatabaseDriverName(st.db)).
+		Table(st.termTableName).
+		Drop()
+}
+
+// sqlDropTermRelationTable returns SQL for dropping the term relation table
+func (st *storeImplementation) sqlDropTermRelationTable() (string, error) {
+	return sb.NewBuilder(sb.DatabaseDriverName(st.db)).
+		Table(st.termRelationTableName).
+		Drop()
+}

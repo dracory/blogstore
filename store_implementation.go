@@ -78,20 +78,28 @@ func (store *storeImplementation) migrateSlugColumn() error {
 	return nil
 }
 
-// AutoMigrate creates the necessary database tables for the blog store.
-// It creates the post table, and optionally taxonomy tables if enabled.
-// Also initializes the versioning store if versioning is enabled.
-func (store *storeImplementation) AutoMigrate() error {
+// MigrateUp creates the blog store tables
+func (store *storeImplementation) MigrateUp(tx ...*sql.Tx) error {
+	var txToUse *sql.Tx
+	if len(tx) > 0 {
+		txToUse = tx[0]
+	}
+
 	// Create main post table
 	sql, err := store.sqlCreatePostTable()
 	if err != nil {
 		return err
 	}
 
-	_, err = store.db.Exec(sql)
-	if err != nil {
-		log.Println(err)
-		return err
+	var errExec error
+	if txToUse != nil {
+		_, errExec = txToUse.Exec(sql)
+	} else {
+		_, errExec = store.db.Exec(sql)
+	}
+	if errExec != nil {
+		log.Println(errExec)
+		return errExec
 	}
 
 	// TODO: Remove this migration logic after May 2027 (1 year from implementation)
@@ -110,10 +118,14 @@ func (store *storeImplementation) AutoMigrate() error {
 			return err
 		}
 
-		_, err = store.db.Exec(sql)
-		if err != nil {
-			log.Println(err)
-			return err
+		if txToUse != nil {
+			_, errExec = txToUse.Exec(sql)
+		} else {
+			_, errExec = store.db.Exec(sql)
+		}
+		if errExec != nil {
+			log.Println(errExec)
+			return errExec
 		}
 
 		// Create term table
@@ -122,10 +134,14 @@ func (store *storeImplementation) AutoMigrate() error {
 			return err
 		}
 
-		_, err = store.db.Exec(sql)
-		if err != nil {
-			log.Println(err)
-			return err
+		if txToUse != nil {
+			_, errExec = txToUse.Exec(sql)
+		} else {
+			_, errExec = store.db.Exec(sql)
+		}
+		if errExec != nil {
+			log.Println(errExec)
+			return errExec
 		}
 
 		// Create term relation table
@@ -134,10 +150,14 @@ func (store *storeImplementation) AutoMigrate() error {
 			return err
 		}
 
-		_, err = store.db.Exec(sql)
-		if err != nil {
-			log.Println(err)
-			return err
+		if txToUse != nil {
+			_, errExec = txToUse.Exec(sql)
+		} else {
+			_, errExec = store.db.Exec(sql)
+		}
+		if errExec != nil {
+			log.Println(errExec)
+			return errExec
 		}
 	}
 
@@ -145,9 +165,88 @@ func (store *storeImplementation) AutoMigrate() error {
 		if store.versioningStore == nil {
 			return errors.New("versioning store is nil")
 		}
-		if err := store.versioningStore.AutoMigrate(); err != nil {
+		if err := store.versioningStore.MigrateUp(tx...); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// MigrateDown drops the blog store tables
+func (store *storeImplementation) MigrateDown(tx ...*sql.Tx) error {
+	var txToUse *sql.Tx
+	if len(tx) > 0 {
+		txToUse = tx[0]
+	}
+
+	// Drop tables in reverse order of creation (due to potential foreign key constraints)
+	if store.taxonomyEnabled {
+		// Drop term relation table first
+		sql, err := store.sqlDropTermRelationTable()
+		if err != nil {
+			return err
+		}
+
+		var errExec error
+		if txToUse != nil {
+			_, errExec = txToUse.Exec(sql)
+		} else {
+			_, errExec = store.db.Exec(sql)
+		}
+		if errExec != nil {
+			log.Println(errExec)
+			return errExec
+		}
+
+		// Drop term table
+		sql, err = store.sqlDropTermTable()
+		if err != nil {
+			return err
+		}
+
+		if txToUse != nil {
+			_, errExec = txToUse.Exec(sql)
+		} else {
+			_, errExec = store.db.Exec(sql)
+		}
+		if errExec != nil {
+			log.Println(errExec)
+			return errExec
+		}
+
+		// Drop taxonomy table
+		sql, err = store.sqlDropTaxonomyTable()
+		if err != nil {
+			return err
+		}
+
+		if txToUse != nil {
+			_, errExec = txToUse.Exec(sql)
+		} else {
+			_, errExec = store.db.Exec(sql)
+		}
+		if errExec != nil {
+			log.Println(errExec)
+			return errExec
+		}
+	}
+
+	// Drop post table
+	sql, err := store.sqlDropPostTable()
+	if err != nil {
+		return err
+	}
+
+	var errExec error
+	if txToUse != nil {
+		_, errExec = txToUse.Exec(sql)
+	} else {
+		_, errExec = store.db.Exec(sql)
+	}
+	if errExec != nil {
+		log.Println(errExec)
+		return errExec
 	}
 
 	return nil
@@ -167,6 +266,46 @@ func (st *storeImplementation) TaxonomyEnabled() bool {
 func (st *storeImplementation) EnableDebug(debug bool) StoreInterface {
 	st.debugEnabled = debug
 	return st
+}
+
+// GetPostTableName returns the post table name
+func (st *storeImplementation) GetPostTableName() string {
+	return st.postTableName
+}
+
+// SetPostTableName sets the post table name
+func (st *storeImplementation) SetPostTableName(tableName string) {
+	st.postTableName = tableName
+}
+
+// GetTaxonomyTableName returns the taxonomy table name
+func (st *storeImplementation) GetTaxonomyTableName() string {
+	return st.taxonomyTableName
+}
+
+// SetTaxonomyTableName sets the taxonomy table name
+func (st *storeImplementation) SetTaxonomyTableName(tableName string) {
+	st.taxonomyTableName = tableName
+}
+
+// GetTermTableName returns the term table name
+func (st *storeImplementation) GetTermTableName() string {
+	return st.termTableName
+}
+
+// SetTermTableName sets the term table name
+func (st *storeImplementation) SetTermTableName(tableName string) {
+	st.termTableName = tableName
+}
+
+// GetTermRelationTableName returns the term relation table name
+func (st *storeImplementation) GetTermRelationTableName() string {
+	return st.termRelationTableName
+}
+
+// SetTermRelationTableName sets the term relation table name
+func (st *storeImplementation) SetTermRelationTableName(tableName string) {
+	st.termRelationTableName = tableName
 }
 
 // PostCreate inserts a new post into the database.

@@ -1,13 +1,37 @@
 package blogstore
 
-import "context"
+import (
+	"context"
+	"database/sql"
+)
 
 // StoreInterface defines the complete interface for blog post storage operations,
 // including post management, taxonomy/term handling, and optional versioning support.
 type StoreInterface interface {
-	// AutoMigrate creates or updates the database schema to match the current model definitions.
-	// Returns an error if migration fails.
-	AutoMigrate() error
+	// GetPostTableName returns the post table name
+	GetPostTableName() string
+	// SetPostTableName sets the post table name
+	SetPostTableName(tableName string)
+
+	// GetTaxonomyTableName returns the taxonomy table name
+	GetTaxonomyTableName() string
+	// SetTaxonomyTableName sets the taxonomy table name
+	SetTaxonomyTableName(tableName string)
+
+	// GetTermTableName returns the term table name
+	GetTermTableName() string
+	// SetTermTableName sets the term table name
+	SetTermTableName(tableName string)
+
+	// GetTermRelationTableName returns the term relation table name
+	GetTermRelationTableName() string
+	// SetTermRelationTableName sets the term relation table name
+	SetTermRelationTableName(tableName string)
+
+	// MigrateDown drops the blog store tables
+	MigrateDown(tx ...*sql.Tx) error
+	// MigrateUp creates the blog store tables
+	MigrateUp(tx ...*sql.Tx) error
 
 	// EnableDebug toggles debug mode logging for database operations.
 	// Returns the StoreInterface to allow method chaining.

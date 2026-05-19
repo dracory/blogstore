@@ -92,7 +92,7 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 	store.timeoutSeconds = 2 * 60 * 60 // 2 hours
 
 	if store.automigrateEnabled {
-		store.AutoMigrate()
+		store.MigrateUp()
 	}
 
 	return store, nil
