@@ -11,6 +11,7 @@ import (
 	"github.com/doug-martin/goqu/v9"
 	"github.com/dracory/database"
 	"github.com/dracory/sb"
+	"github.com/dracory/sb/schema"
 	"github.com/dracory/versionstore"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
@@ -40,42 +41,22 @@ type storeImplementation struct {
 // migrateSlugColumn adds the slug column if it doesn't exist (for existing installations)
 // TODO: Remove this function after May 2027 (1 year from implementation)
 func (store *storeImplementation) migrateSlugColumn() error {
-	checkSQL, checkParams, err := sb.NewBuilder(sb.DatabaseDriverName(store.db)).
-		TableColumnExists(store.postTableName, COLUMN_SLUG)
+	queryable := database.NewQueryableContext(context.Background(), store.db)
+
+	columnExists, err := schema.TableColumnExists(queryable, store.postTableName, COLUMN_SLUG)
 	if err != nil {
 		return err
 	}
 
-	var exists bool
-	err = store.db.QueryRow(checkSQL, checkParams...).Scan(&exists)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// No rows means column doesn't exist
-			exists = false
-		} else {
-			log.Println(err)
-			return err
-		}
+	if columnExists {
+		return nil
 	}
 
-	if !exists {
-		alterSQL, err := sb.NewBuilder(sb.DatabaseDriverName(store.db)).
-			TableColumnAdd(store.postTableName, sb.Column{
-				Name:   COLUMN_SLUG,
-				Type:   sb.COLUMN_TYPE_STRING,
-				Length: 255,
-			})
-		if err != nil {
-			return err
-		}
-
-		_, err = store.db.Exec(alterSQL)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return schema.TableColumnAdd(queryable, store.postTableName, sb.Column{
+		Name:   COLUMN_SLUG,
+		Type:   sb.COLUMN_TYPE_STRING,
+		Length: 255,
+	})
 }
 
 // MigrateUp creates the blog store tables
