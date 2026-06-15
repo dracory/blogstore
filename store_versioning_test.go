@@ -663,7 +663,7 @@ func TestVersioningSoftDelete(t *testing.T) {
 		t.Error("unexpected error:", err)
 	}
 
-	if version.SoftDeletedAt() == "" {
+	if version.GetSoftDeletedAt() == "" {
 		t.Error("expected SoftDeletedAt to be non-empty")
 	}
 }
@@ -763,7 +763,7 @@ func TestVersioningSoftDeleteByID(t *testing.T) {
 	if len(list) != 1 {
 		t.Fatalf("expected 1 record with soft deleted included, got %d", len(list))
 	}
-	if list[0].SoftDeletedAt() == "" {
+	if list[0].GetSoftDeletedAt() == "" {
 		t.Error("expected SoftDeletedAt to be non-empty")
 	}
 }

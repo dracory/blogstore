@@ -631,7 +631,7 @@ func (m *MCP) toolPostVersions(ctx context.Context, args map[string]any) (string
 			"entity_id":   version.EntityID(),
 			"entity_type": version.EntityType(),
 			"content":     version.Content(),
-			"created_at":  version.CreatedAt(),
+			"created_at":  version.GetCreatedAt(),
 		}
 		versionItems = append(versionItems, item)
 	}
