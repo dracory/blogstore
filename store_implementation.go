@@ -3,18 +3,17 @@ package blogstore
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"log"
-	"strconv"
-	"strings"
+	"time"
 
-	"github.com/doug-martin/goqu/v9"
-	"github.com/dracory/database"
-	"github.com/dracory/sb"
-	"github.com/dracory/sb/schema"
+	"github.com/dracory/neat"
+	contractsorm "github.com/dracory/neat/contracts/database/orm"
+	contractsschema "github.com/dracory/neat/contracts/database/schema"
+	"github.com/dracory/neat/database/schema/constants"
 	"github.com/dracory/versionstore"
 	"github.com/dromara/carbon/v2"
-	"github.com/samber/lo"
 )
 
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
@@ -26,8 +25,7 @@ type storeImplementation struct {
 	taxonomyTableName     string
 	termTableName         string
 	termRelationTableName string
-	db                    *sql.DB
-	dbDriverName          string
+	db                    *neat.Database
 	timeoutSeconds        int64
 	automigrateEnabled    bool
 	debugEnabled          bool
@@ -41,104 +39,120 @@ type storeImplementation struct {
 // migrateSlugColumn adds the slug column if it doesn't exist (for existing installations)
 // TODO: Remove this function after May 2027 (1 year from implementation)
 func (store *storeImplementation) migrateSlugColumn() error {
-	queryable := database.NewQueryableContext(context.Background(), store.db)
+	// Use raw SQL to add column if it doesn't exist
+	// This is a temporary migration for existing installations
+	sql := `ALTER TABLE ` + store.postTableName + ` ADD COLUMN ` + COLUMN_SLUG + ` VARCHAR(255)`
 
-	columnExists, err := schema.TableColumnExists(queryable, store.postTableName, COLUMN_SLUG)
+	// Get underlying DB to execute raw SQL
+	db, err := store.db.DB()
 	if err != nil {
 		return err
 	}
 
-	if columnExists {
+	// Try to execute, ignore error if column already exists
+	_, err = db.Exec(sql)
+	if err != nil {
+		// Column might already exist, which is fine
 		return nil
 	}
-
-	return schema.TableColumnAdd(queryable, store.postTableName, sb.Column{
-		Name:   COLUMN_SLUG,
-		Type:   sb.COLUMN_TYPE_STRING,
-		Length: 255,
-	})
+	return nil
 }
 
 // MigrateUp creates the blog store tables
 func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) error {
-	var txToUse *sql.Tx
-	if len(tx) > 0 {
-		txToUse = tx[0]
-	}
-
 	// Create main post table
-	sql, err := store.sqlCreatePostTable()
-	if err != nil {
-		return err
-	}
+	if !store.db.Schema().HasTable(store.postTableName) {
+		err := store.db.Schema().Create(store.postTableName, func(table contractsschema.Blueprint) {
+			table.String(COLUMN_ID, 21)
+			table.Primary(COLUMN_ID)
+			table.String(COLUMN_SLUG, 255)
+			table.Text(COLUMN_TITLE)
+			table.Text(COLUMN_CONTENT)
+			table.Text(COLUMN_SUMMARY)
+			table.String(COLUMN_STATUS, 50)
+			table.String(COLUMN_AUTHOR_ID, 40)
+			table.String(COLUMN_CANONICAL_URL, 255)
+			table.String(COLUMN_IMAGE_URL, 255)
+			table.String(COLUMN_MEMO, 255)
+			table.String(COLUMN_META_DESCRIPTION, 255)
+			table.String(COLUMN_META_KEYWORDS, 255)
+			table.String(COLUMN_META_ROBOTS, 50)
+			table.Text(COLUMN_METAS)
+			table.Boolean(COLUMN_FEATURED)
+			table.DateTime(COLUMN_PUBLISHED_AT)
+			table.DateTime(COLUMN_CREATED_AT)
+			table.DateTime(COLUMN_UPDATED_AT)
+			table.DateTime(constants.SoftDeleteAtColumn).Default(constants.MaxSoftDeletedAtDefault)
+		})
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 
-	var errExec error
-	if txToUse != nil {
-		_, errExec = txToUse.ExecContext(ctx, sql)
-	} else {
-		_, errExec = store.db.ExecContext(ctx, sql)
-	}
-	if errExec != nil {
-		log.Println(errExec)
-		return errExec
-	}
-
-	// TODO: Remove this migration logic after May 2027 (1 year from implementation)
-	// This allows existing installations to auto-migrate the slug column
-	err = store.migrateSlugColumn()
-	if err != nil {
-		log.Println(err)
-		return err
+		// TODO: Remove this migration logic after May 2027 (1 year from implementation)
+		// This allows existing installations to auto-migrate the slug column
+		err = store.migrateSlugColumn()
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 	}
 
 	// Create taxonomy tables only if enabled
 	if store.taxonomyEnabled {
 		// Create taxonomy table
-		sql, err = store.sqlCreateTaxonomyTable()
-		if err != nil {
-			return err
-		}
-
-		if txToUse != nil {
-			_, errExec = txToUse.Exec(sql)
-		} else {
-			_, errExec = store.db.Exec(sql)
-		}
-		if errExec != nil {
-			log.Println(errExec)
-			return errExec
+		if !store.db.Schema().HasTable(store.taxonomyTableName) {
+			err := store.db.Schema().Create(store.taxonomyTableName, func(table contractsschema.Blueprint) {
+				table.String(COLUMN_ID, 21)
+				table.Primary(COLUMN_ID)
+				table.String(COLUMN_NAME, 255)
+				table.String(COLUMN_SLUG, 255)
+				table.Text(COLUMN_DESCRIPTION)
+				table.DateTime(COLUMN_CREATED_AT)
+				table.DateTime(COLUMN_UPDATED_AT)
+			})
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 
 		// Create term table
-		sql, err = store.sqlCreateTermTable()
-		if err != nil {
-			return err
-		}
-
-		if txToUse != nil {
-			_, errExec = txToUse.Exec(sql)
-		} else {
-			_, errExec = store.db.Exec(sql)
-		}
-		if errExec != nil {
-			log.Println(errExec)
-			return errExec
+		if !store.db.Schema().HasTable(store.termTableName) {
+			err := store.db.Schema().Create(store.termTableName, func(table contractsschema.Blueprint) {
+				table.String(COLUMN_ID, 21)
+				table.Primary(COLUMN_ID)
+				table.String(COLUMN_TAXONOMY_ID, 21)
+				table.String(COLUMN_PARENT_ID, 21)
+				table.Integer(COLUMN_SEQUENCE)
+				table.String(COLUMN_NAME, 255)
+				table.String(COLUMN_SLUG, 255)
+				table.Text(COLUMN_DESCRIPTION)
+				table.Integer(COLUMN_COUNT)
+				table.DateTime(COLUMN_CREATED_AT)
+				table.DateTime(COLUMN_UPDATED_AT)
+			})
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 
 		// Create term relation table
-		sql, err = store.sqlCreateTermRelationTable()
-		if err != nil {
-			return err
-		}
-
-		if txToUse != nil {
-			_, errExec = txToUse.Exec(sql)
-		} else {
-			_, errExec = store.db.Exec(sql)
-		}
-		if errExec != nil {
-			log.Println(errExec)
-			return errExec
+		if !store.db.Schema().HasTable(store.termRelationTableName) {
+			err := store.db.Schema().Create(store.termRelationTableName, func(table contractsschema.Blueprint) {
+				table.String(COLUMN_ID, 21)
+				table.Primary(COLUMN_ID)
+				table.String(COLUMN_POST_ID, 21)
+				table.String(COLUMN_TERM_ID, 21)
+				table.Integer(COLUMN_SEQUENCE)
+				table.DateTime(COLUMN_CREATED_AT)
+				table.DateTime(COLUMN_UPDATED_AT)
+			})
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 	}
 
@@ -156,78 +170,43 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 
 // MigrateDown drops the blog store tables
 func (store *storeImplementation) MigrateDown(ctx context.Context, tx ...*sql.Tx) error {
-	var txToUse *sql.Tx
-	if len(tx) > 0 {
-		txToUse = tx[0]
-	}
-
 	// Drop tables in reverse order of creation (due to potential foreign key constraints)
 	if store.taxonomyEnabled {
 		// Drop term relation table first
-		sql, err := store.sqlDropTermRelationTable()
-		if err != nil {
-			return err
-		}
-
-		var errExec error
-		if txToUse != nil {
-			_, errExec = txToUse.Exec(sql)
-		} else {
-			_, errExec = store.db.Exec(sql)
-		}
-		if errExec != nil {
-			log.Println(errExec)
-			return errExec
+		if store.db.Schema().HasTable(store.termRelationTableName) {
+			err := store.db.Schema().Drop(store.termRelationTableName)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 
 		// Drop term table
-		sql, err = store.sqlDropTermTable()
-		if err != nil {
-			return err
-		}
-
-		if txToUse != nil {
-			_, errExec = txToUse.Exec(sql)
-		} else {
-			_, errExec = store.db.Exec(sql)
-		}
-		if errExec != nil {
-			log.Println(errExec)
-			return errExec
+		if store.db.Schema().HasTable(store.termTableName) {
+			err := store.db.Schema().Drop(store.termTableName)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 
 		// Drop taxonomy table
-		sql, err = store.sqlDropTaxonomyTable()
-		if err != nil {
-			return err
-		}
-
-		if txToUse != nil {
-			_, errExec = txToUse.Exec(sql)
-		} else {
-			_, errExec = store.db.Exec(sql)
-		}
-		if errExec != nil {
-			log.Println(errExec)
-			return errExec
+		if store.db.Schema().HasTable(store.taxonomyTableName) {
+			err := store.db.Schema().Drop(store.taxonomyTableName)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 	}
 
 	// Drop post table
-	sql, err := store.sqlDropPostTable()
-	if err != nil {
-		return err
-	}
-
-	var errExec error
-	if txToUse != nil {
-		_, errExec = txToUse.ExecContext(ctx, sql)
-	} else {
-		_, errExec = store.db.ExecContext(ctx, sql)
-	}
-	if errExec != nil {
-		log.Println(errExec)
-		return errExec
+	if store.db.Schema().HasTable(store.postTableName) {
+		err := store.db.Schema().Drop(store.postTableName)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 	}
 
 	return nil
@@ -293,26 +272,52 @@ func (st *storeImplementation) SetTermRelationTableName(tableName string) {
 // It sets the created_at and updated_at timestamps automatically.
 // Also tracks the creation in the versioning store if versioning is enabled.
 func (store *storeImplementation) PostCreate(ctx context.Context, post PostInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
+	if post.GetID() == "" {
+		post.SetID(GenerateShortID())
+	}
+
 	post.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 	post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
-	data := post.GetData()
-
-	sqlStr, sqlParams, errSql := goqu.Dialect(store.dbDriverName).
-		Insert(store.postTableName).
-		Prepared(true).
-		Rows(data).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
+	db, err := store.db.DB()
+	if err != nil {
+		return err
 	}
 
-	if store.debugEnabled {
-		log.Println(sqlStr)
+	metas, _ := post.GetMetas()
+	metasJSON := ""
+	if len(metas) > 0 {
+		metasBytes, err := json.Marshal(metas)
+		if err != nil {
+			return err
+		}
+		metasJSON = string(metasBytes)
 	}
 
-	_, err := store.db.ExecContext(ctx, sqlStr, sqlParams...)
+	_, err = db.ExecContext(ctx, "INSERT INTO "+store.postTableName+" (id, slug, title, content, summary, status, author_id, canonical_url, image_url, memo, meta_description, meta_keywords, meta_robots, metas, featured, published_at, created_at, updated_at, soft_deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		post.GetID(),
+		post.GetSlug(),
+		post.GetTitle(),
+		post.GetContent(),
+		post.GetSummary(),
+		post.GetStatus(),
+		post.GetAuthorID(),
+		post.GetCanonicalURL(),
+		post.GetImageUrl(),
+		post.GetMemo(),
+		post.GetMetaDescription(),
+		post.GetMetaKeywords(),
+		post.GetMetaRobots(),
+		metasJSON,
+		post.GetFeatured(),
+		post.GetPublishedAtCarbon().StdTime(),
+		post.GetCreatedAtCarbon().StdTime(),
+		post.GetUpdatedAtCarbon().StdTime(),
+		post.GetSoftDeletedAtCarbon().StdTime(),
+	)
 
 	if err != nil {
 		return err
@@ -328,46 +333,15 @@ func (store *storeImplementation) PostCreate(ctx context.Context, post PostInter
 
 // PostCount returns the total number of posts matching the given query options.
 func (store *storeImplementation) PostCount(ctx context.Context, options PostQueryOptions) (int64, error) {
-	options.CountOnly = true
-	q := store.postQuery(options)
-
-	sqlStr, params, errSql := q.Prepared(true).
-		Limit(1).
-		Select(goqu.COUNT(goqu.Star()).As("count")).
-		ToSQL()
-
-	if errSql != nil {
-		return -1, nil
+	if ctx == nil {
+		return 0, errors.New("ctx is nil")
 	}
 
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
+	q := store.buildPostQuery(options)
 
-	mapped, err := database.SelectToMapString(
-		database.NewQueryableContext(ctx, store.db),
-		sqlStr,
-		params...,
-	)
-
-	if err != nil {
-		return -1, err
-	}
-
-	if len(mapped) < 1 {
-		return -1, nil
-	}
-
-	countStr := mapped[0]["count"]
-
-	i, err := strconv.ParseInt(countStr, 10, 64)
-
-	if err != nil {
-		return -1, err
-
-	}
-
-	return i, nil
+	var count int64
+	err := q.Table(store.postTableName).Count(&count)
+	return count, err
 }
 
 // PostTrash moves a post to trash by setting its status to POST_STATUS_TRASH.
@@ -379,6 +353,9 @@ func (store *storeImplementation) PostTrash(ctx context.Context, post PostInterf
 
 // PostDelete permanently removes a post from the database.
 func (store *storeImplementation) PostDelete(ctx context.Context, post PostInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if post == nil {
 		return errors.New("post is nil")
 	}
@@ -388,25 +365,17 @@ func (store *storeImplementation) PostDelete(ctx context.Context, post PostInter
 
 // PostDeleteByID permanently removes a post by its ID.
 func (store *storeImplementation) PostDeleteByID(ctx context.Context, id string) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if id == "" {
 		return errors.New("post id is empty")
 	}
 
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Delete(store.postTableName).
-		Where(goqu.C(COLUMN_ID).Eq(id)).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, params...)
+	_, err := store.db.Query().
+		Table(store.postTableName).
+		Where(COLUMN_ID+" = ?", id).
+		Delete()
 
 	return err
 }
@@ -485,25 +454,10 @@ func (store *storeImplementation) PostFindByOldSlug(ctx context.Context, oldSlug
 		return nil, errors.New("old slug is empty")
 	}
 
-	// Debug: Get all posts to check the actual metas JSON format
-	if store.debugEnabled {
-		allPosts, _ := store.PostList(ctx, PostQueryOptions{})
-		for _, p := range allPosts {
-			metas, err := p.GetMetas()
-			if err == nil && metas != nil {
-				oldSlugsJSON := metas[META_KEY_OLD_SLUGS]
-				if oldSlugsJSON != "" {
-					log.Printf("DEBUG: Post %s has old_slugs JSON: %s", p.GetID(), oldSlugsJSON)
-				}
-			}
-		}
-	}
-
 	list, err := store.PostList(ctx, PostQueryOptions{
 		OldSlug: oldSlug,
 		Limit:   1,
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -520,6 +474,8 @@ func (st *storeImplementation) PostFindPrevious(post PostInterface) (PostInterfa
 	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtLessThan: post.GetCreatedAtCarbon().ToDateTimeString(),
 		Limit:             1,
+		OrderBy:           COLUMN_CREATED_AT,
+		SortOrder:         "DESC",
 	})
 
 	if err != nil {
@@ -538,6 +494,8 @@ func (st *storeImplementation) PostFindNext(post PostInterface) (PostInterface, 
 	list, err := st.PostList(context.Background(), PostQueryOptions{
 		CreatedAtGreaterThan: post.GetCreatedAtCarbon().ToDateTimeString(),
 		Limit:                1,
+		OrderBy:              COLUMN_CREATED_AT,
+		SortOrder:            "ASC",
 	})
 
 	if err != nil {
@@ -553,43 +511,82 @@ func (st *storeImplementation) PostFindNext(post PostInterface) (PostInterface, 
 
 // PostList retrieves a list of posts matching the given query options.
 func (st *storeImplementation) PostList(ctx context.Context, options PostQueryOptions) ([]PostInterface, error) {
-	q := st.postQuery(options)
-
-	sqlStr, sqlParams, errSql := q.Select().
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		log.Println(errSql)
-		return []PostInterface{}, errSql
+	if ctx == nil {
+		return nil, errors.New("ctx is nil")
 	}
 
-	if st.debugEnabled {
-		log.Println(sqlStr)
-		log.Println(sqlParams)
+	type postRow struct {
+		ID              string    `db:"id"`
+		Slug            string    `db:"slug"`
+		Title           string    `db:"title"`
+		Content         string    `db:"content"`
+		Summary         string    `db:"summary"`
+		Status          string    `db:"status"`
+		AuthorID        string    `db:"author_id"`
+		CanonicalURL    string    `db:"canonical_url"`
+		ImageURL        string    `db:"image_url"`
+		Memo            string    `db:"memo"`
+		MetaDescription string    `db:"meta_description"`
+		MetaKeywords    string    `db:"meta_keywords"`
+		MetaRobots      string    `db:"meta_robots"`
+		Metas           string    `db:"metas"`
+		Featured        string    `db:"featured"`
+		PublishedAt     time.Time `db:"published_at"`
+		CreatedAt       time.Time `db:"created_at"`
+		UpdatedAt       time.Time `db:"updated_at"`
+		SoftDeletedAt   time.Time `db:"soft_deleted_at"`
 	}
 
-	modelMaps, err := database.SelectToMapString(
-		database.NewQueryableContext(ctx, st.db),
-		sqlStr,
-		sqlParams...,
-	)
-	if err != nil {
+	q := st.buildPostQuery(options)
+
+	var rows []postRow
+	if err := q.Table(st.postTableName).Get(&rows); err != nil {
 		return []PostInterface{}, err
 	}
 
-	list := []PostInterface{}
-
-	lo.ForEach(modelMaps, func(modelMap map[string]string, index int) {
-		model := NewPostFromExistingData(modelMap)
-		list = append(list, model)
-	})
+	list := make([]PostInterface, 0, len(rows))
+	for _, r := range rows {
+		p := NewPost()
+		p.SetID(r.ID)
+		p.SetSlug(r.Slug)
+		p.SetTitle(r.Title)
+		p.SetContent(r.Content)
+		p.SetSummary(r.Summary)
+		p.SetStatus(r.Status)
+		p.SetAuthorID(r.AuthorID)
+		p.SetCanonicalURL(r.CanonicalURL)
+		p.SetImageUrl(r.ImageURL)
+		p.SetMemo(r.Memo)
+		p.SetMetaDescription(r.MetaDescription)
+		p.SetMetaKeywords(r.MetaKeywords)
+		p.SetMetaRobots(r.MetaRobots)
+		// Parse JSON string to map for SetMetas
+		if r.Metas != "" {
+			var metas map[string]string
+			if err := json.Unmarshal([]byte(r.Metas), &metas); err == nil {
+				for k, v := range metas {
+					p.SetMeta(k, v)
+				}
+			}
+		}
+		p.SetFeatured(r.Featured)
+		if postImpl, ok := p.(*postImplementation); ok {
+			postImpl.PublishedAtField = r.PublishedAt
+			postImpl.CreatedAtField.CreatedAt = r.CreatedAt
+			postImpl.UpdatedAtField.UpdatedAt = r.UpdatedAt
+			postImpl.SoftDeletedAt = r.SoftDeletedAt
+		}
+		list = append(list, p)
+	}
 
 	return list, nil
 }
 
 // PostSoftDelete marks a post as deleted by setting the soft_deleted_at timestamp.
 func (st *storeImplementation) PostSoftDelete(ctx context.Context, post PostInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if post == nil {
 		return errors.New("post is nil")
 	}
@@ -601,10 +598,17 @@ func (st *storeImplementation) PostSoftDelete(ctx context.Context, post PostInte
 
 // PostSoftDeleteByID marks a post as deleted by its ID.
 func (st *storeImplementation) PostSoftDeleteByID(ctx context.Context, id string) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	post, err := st.PostFindByID(ctx, id)
 
 	if err != nil {
 		return err
+	}
+
+	if post == nil {
+		return errors.New("post not found")
 	}
 
 	return st.PostSoftDelete(ctx, post)
@@ -613,11 +617,14 @@ func (st *storeImplementation) PostSoftDeleteByID(ctx context.Context, id string
 // PostUpdate updates an existing post in the database.
 // Only changed fields are updated. Also tracks the update in the versioning store if enabled.
 func (st *storeImplementation) PostUpdate(ctx context.Context, post PostInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if post == nil {
-		return errors.New("order is nil")
+		return errors.New("post is nil")
 	}
 
-	// post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
+	post.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
 
 	dataChanged := post.GetDataChanged()
 
@@ -629,164 +636,161 @@ func (st *storeImplementation) PostUpdate(ctx context.Context, post PostInterfac
 		return nil
 	}
 
-	sqlStr, params, errSql := goqu.Dialect(st.dbDriverName).
-		Update(st.postTableName).
-		Set(dataChanged).
-		Where(goqu.C(COLUMN_ID).Eq(post.GetID())).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
+	// Convert dataChanged to proper format for neat Update
+	// neat expects map[string]interface{} with proper Go types
+	updateData := make(map[string]interface{})
+	for k, v := range dataChanged {
+		updateData[k] = v
 	}
 
-	if st.debugEnabled {
-		log.Println(sqlStr)
+	// Handle special fields that need conversion
+	if publishedAt, ok := updateData["published_at"]; ok {
+		if publishedAtStr, ok := publishedAt.(string); ok {
+			updateData["published_at"] = carbon.Parse(publishedAtStr, carbon.UTC).StdTime()
+		}
+	}
+	if createdAt, ok := updateData["created_at"]; ok {
+		if createdAtStr, ok := createdAt.(string); ok {
+			updateData["created_at"] = carbon.Parse(createdAtStr, carbon.UTC).StdTime()
+		}
+	}
+	if updatedAt, ok := updateData["updated_at"]; ok {
+		if updatedAtStr, ok := updatedAt.(string); ok {
+			updateData["updated_at"] = carbon.Parse(updatedAtStr, carbon.UTC).StdTime()
+		}
+	}
+	if softDeletedAt, ok := updateData["soft_deleted_at"]; ok {
+		if softDeletedAtStr, ok := softDeletedAt.(string); ok {
+			updateData["soft_deleted_at"] = carbon.Parse(softDeletedAtStr, carbon.UTC).StdTime()
+		}
 	}
 
-	_, err := st.db.ExecContext(ctx, sqlStr, params...)
+	_, err := st.db.Query().
+		Table(st.postTableName).
+		Where(COLUMN_ID+" = ?", post.GetID()).
+		Update(updateData)
+
+	if err != nil {
+		return err
+	}
 
 	post.MarkAsNotDirty()
 	if err2 := st.versioningTrackEntity(ctx, VERSIONING_TYPE_POST, post.GetID(), post); err2 != nil {
 		return err2
 	}
 
-	return err
+	return nil
 }
 
-// postQuery builds a goqu SelectDataset for querying posts based on options.
-func (st *storeImplementation) postQuery(options PostQueryOptions) *goqu.SelectDataset {
-	q := goqu.Dialect(st.dbDriverName).
-		From(st.postTableName)
+// buildPostQuery builds a neat query from the post query options.
+func (st *storeImplementation) buildPostQuery(options PostQueryOptions) contractsorm.Query {
+	q := st.db.Query()
 
 	if options.ID != "" {
-		q = q.Where(goqu.C(COLUMN_ID).Eq(options.ID))
+		q = q.Where(COLUMN_ID+" = ?", options.ID)
 	}
 
 	if len(options.IDIn) > 0 {
-		q = q.Where(goqu.C(COLUMN_ID).In(options.IDIn))
-	}
-
-	if options.Status != "" {
-		q = q.Where(goqu.C(COLUMN_STATUS).Eq(options.Status))
-	}
-
-	if len(options.StatusIn) > 0 {
-		q = q.Where(goqu.C(COLUMN_STATUS).In(options.StatusIn))
+		// Build IN clause manually for neat compatibility
+		inClause := COLUMN_ID + " IN ("
+		placeholders := make([]interface{}, 0, len(options.IDIn))
+		for i, id := range options.IDIn {
+			if i > 0 {
+				inClause += ", "
+			}
+			inClause += "?"
+			placeholders = append(placeholders, id)
+		}
+		inClause += ")"
+		q = q.Where(inClause, placeholders...)
 	}
 
 	if options.Slug != "" {
-		q = q.Where(goqu.C(COLUMN_SLUG).Eq(options.Slug))
+		q = q.Where(COLUMN_SLUG+" = ?", options.Slug)
 	}
 
-	if options.Search != "" {
-		q = q.Where(
-			goqu.Or(
-				// Search Title
-				goqu.C(COLUMN_TITLE).ILike("%"+options.Search+"%"),
-				// Search Body Content
-				goqu.C(COLUMN_CONTENT).ILike("%"+options.Search+"%"),
-				// Search ID
-				goqu.C(COLUMN_ID).Eq(options.Search),
-			),
-		)
+	if options.OldSlug != "" {
+		// Use JSON contains to check if old slugs array contains the value
+		// The JSON structure is: {"_old_slugs": "[\"slug1\",\"slug2\"]"}
+		// Note: the value is a string containing JSON array
+		// We search for the pattern: "_old_slugs":"[..."old-slug-1"...]"
+		// Use escaped quotes for the pattern
+		q = q.Where(COLUMN_METAS+" LIKE ?", "%\"_old_slugs\":\"[%\\\""+options.OldSlug+"\\\"%]%")
 	}
 
-	if options.CreatedAtGreaterThan != "" {
-		q = q.Where(goqu.C(COLUMN_CREATED_AT).Gt(options.CreatedAtGreaterThan))
+	if len(options.MetaEquals) > 0 {
+		// For each meta key-value pair, add a JSON contains condition
+		// The JSON structure is: {"key": "value"}
+		for key, value := range options.MetaEquals {
+			// Search for pattern: "key":"value"
+			q = q.Where(COLUMN_METAS+" LIKE ?", "%\""+key+"\":\""+value+"\"%")
+		}
+	}
+
+	if len(options.MetaArrayContains) > 0 {
+		// For each meta array key-value pair, add a JSON contains condition
+		// The JSON structure is: {"key": "[\"value1\",\"value2\"]"}
+		for key, value := range options.MetaArrayContains {
+			// Search for pattern: "key":"[..."value"...]"
+			q = q.Where(COLUMN_METAS+" LIKE ?", "%\""+key+"\":\"[%\""+value+"\"%]%")
+		}
+	}
+
+	if options.Status != "" {
+		q = q.Where(COLUMN_STATUS+" = ?", options.Status)
+	}
+
+	if len(options.StatusIn) > 0 {
+		// Build IN clause manually for neat compatibility
+		inClause := COLUMN_STATUS + " IN ("
+		placeholders := make([]interface{}, 0, len(options.StatusIn))
+		for i, status := range options.StatusIn {
+			if i > 0 {
+				inClause += ", "
+			}
+			inClause += "?"
+			placeholders = append(placeholders, status)
+		}
+		inClause += ")"
+		q = q.Where(inClause, placeholders...)
 	}
 
 	if options.CreatedAtLessThan != "" {
-		q = q.Where(goqu.C(COLUMN_CREATED_AT).Lt(options.CreatedAtLessThan))
+		q = q.Where(COLUMN_CREATED_AT+" < ?", carbon.Parse(options.CreatedAtLessThan, carbon.UTC).StdTime())
 	}
 
-	// Handle MetaEquals filtering - checks if meta JSON has key-value pair (equality)
-	if len(options.MetaEquals) > 0 {
-		for key, value := range options.MetaEquals {
-			// Use JSON extraction for cross-database compatibility
-			// SQLite: json_extract(metas, '$.key')
-			// MySQL/PostgreSQL: metas->>'$.key' or json_extract(metas, '$.key')
-			var jsonExpr goqu.Expression
-			switch st.dbDriverName {
-			case "sqlite3", "sqlite":
-				// SQLite json_extract syntax
-				jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", ?)", "$."+key).Eq(value)
-			case "mysql":
-				// MySQL JSON_EXTRACT syntax
-				jsonExpr = goqu.L("JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", ?))", "$."+key).Eq(value)
-			default:
-				// PostgreSQL and others - use generic JSON extraction
-				jsonExpr = goqu.L("("+COLUMN_METAS+"->>?)::text", key).Eq(value)
-			}
-			q = q.Where(jsonExpr)
-		}
+	if options.CreatedAtGreaterThan != "" {
+		q = q.Where(COLUMN_CREATED_AT+" > ?", carbon.Parse(options.CreatedAtGreaterThan, carbon.UTC).StdTime())
 	}
 
-	// Handle MetaArrayContains filtering - checks if meta JSON array field contains the value
-	if len(options.MetaArrayContains) > 0 {
-		for key, value := range options.MetaArrayContains {
-			var jsonExpr goqu.Expression
-			switch st.dbDriverName {
-			case "sqlite3", "sqlite":
-				// SQLite: json_extract returns JSON array, check if contains value
-				jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", ?) LIKE ?", "$."+key, "%\""+value+"\"%")
-			case "mysql":
-				// MySQL: JSON_CONTAINS - properly escape the value as JSON string
-				jsonExpr = goqu.L("JSON_CONTAINS(JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", ?)), JSON_QUOTE(?))", "$."+key, value)
-			default:
-				// PostgreSQL: jsonb_array_elements or string contains
-				jsonExpr = goqu.L("("+COLUMN_METAS+"->>?)::text LIKE ?", key, "%\""+value+"\"%")
-			}
-			q = q.Where(jsonExpr)
-		}
+	if options.Search != "" {
+		// Simple search on title and content
+		q = q.Where("("+COLUMN_TITLE+" LIKE ? OR "+COLUMN_CONTENT+" LIKE ?)", "%"+options.Search+"%", "%"+options.Search+"%")
 	}
 
-	// Handle OldSlug filtering - checks if old slugs array contains the value
-	if options.OldSlug != "" {
-		var jsonExpr goqu.Expression
-		switch st.dbDriverName {
-		case "sqlite3", "sqlite":
-			// SQLite: json_extract returns JSON array, check if contains value
-			jsonExpr = goqu.L("json_extract("+COLUMN_METAS+", '$."+META_KEY_OLD_SLUGS+"') LIKE ?", "%\""+options.OldSlug+"\"%")
-		case "mysql":
-			// MySQL: JSON_CONTAINS - properly escape the value as JSON string
-			jsonExpr = goqu.L("JSON_CONTAINS(JSON_UNQUOTE(JSON_EXTRACT("+COLUMN_METAS+", '$."+META_KEY_OLD_SLUGS+"')), JSON_QUOTE(?))", options.OldSlug)
-		default:
-			// PostgreSQL: jsonb_array_elements or string contains
-			jsonExpr = goqu.L("("+COLUMN_METAS+"->>'"+META_KEY_OLD_SLUGS+"')::text LIKE ?", "%\""+options.OldSlug+"\"%")
+	if options.OrderBy != "" {
+		order := options.SortOrder
+		if order == "" {
+			order = "DESC"
 		}
-		q = q.Where(jsonExpr)
+		q = q.OrderBy(options.OrderBy + " " + order)
 	}
 
-	if !options.CountOnly {
-		if options.Limit > 0 {
-			q = q.Limit(uint(options.Limit))
-		}
-
-		if options.Offset > 0 {
-			q = q.Offset(uint(options.Offset))
-		}
-
-		sortOrder := "desc"
-		if options.SortOrder != "" {
-			sortOrder = options.SortOrder
-		}
-
-		if options.OrderBy != "" {
-			if strings.EqualFold(sortOrder, sb.ASC) {
-				q = q.Order(goqu.I(options.OrderBy).Asc())
-			} else {
-				q = q.Order(goqu.I(options.OrderBy).Desc())
-			}
-		}
+	if options.Limit > 0 {
+		q = q.Limit(options.Limit)
 	}
 
+	if options.Offset > 0 {
+		q = q.Offset(options.Offset)
+	}
+
+	// Handle soft delete filtering
 	if options.WithDeleted {
-		return q
+		q = q.WithSoftDeleted()
+	} else {
+		// By default, filter out soft-deleted records
+		q = q.Where(COLUMN_SOFT_DELETED_AT+" = ?", carbon.Parse(MAX_DATETIME, carbon.UTC).StdTime())
 	}
 
-	softDeleted := goqu.C(COLUMN_SOFT_DELETED_AT).
-		Gt(carbon.Now(carbon.UTC).ToDateTimeString())
-
-	return q.Where(softDeleted)
+	return q
 }

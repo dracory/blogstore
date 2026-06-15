@@ -138,7 +138,6 @@ func TestPostCreateWithContentType(t *testing.T) {
 	store, err := blogstore.NewStore(blogstore.NewStoreOptions{
 		PostTableName:      "test_posts",
 		DB:                 db,
-		DbDriverName:       "sqlite",
 		AutomigrateEnabled: true,
 	})
 	if err != nil {
@@ -271,7 +270,6 @@ func TestPostUpdateWithContentType(t *testing.T) {
 	store, err := blogstore.NewStore(blogstore.NewStoreOptions{
 		PostTableName:      "test_posts",
 		DB:                 db,
-		DbDriverName:       "sqlite",
 		AutomigrateEnabled: true,
 	})
 	if err != nil {
@@ -402,7 +400,6 @@ func TestPostCreateWithoutContentType(t *testing.T) {
 	store, err := blogstore.NewStore(blogstore.NewStoreOptions{
 		PostTableName:      "test_posts",
 		DB:                 db,
-		DbDriverName:       "sqlite",
 		AutomigrateEnabled: true,
 	})
 	if err != nil {
@@ -496,7 +493,6 @@ func TestBlogSchemaIncludesContentType(t *testing.T) {
 	store, err := blogstore.NewStore(blogstore.NewStoreOptions{
 		PostTableName:      "test_posts",
 		DB:                 db,
-		DbDriverName:       "sqlite",
 		AutomigrateEnabled: true,
 	})
 	if err != nil {
@@ -616,7 +612,6 @@ func TestContentTypeValidation(t *testing.T) {
 	store, err := blogstore.NewStore(blogstore.NewStoreOptions{
 		PostTableName:      "test_posts",
 		DB:                 db,
-		DbDriverName:       "sqlite",
 		AutomigrateEnabled: true,
 	})
 	if err != nil {

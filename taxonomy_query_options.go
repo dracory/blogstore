@@ -19,6 +19,7 @@ type TermQueryOptions struct {
 	TaxonomyID   string
 	TaxonomySlug string
 	ParentID     string
+	Slug         string
 	Search       string
 	Limit        int
 	Offset       int

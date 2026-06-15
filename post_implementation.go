@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dracory/dataobject"
-	"github.com/dracory/sb"
+	"github.com/dracory/neat/database/orm"
+	"github.com/dracory/neat/database/soft_delete"
 	"github.com/dracory/str"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
@@ -28,13 +28,12 @@ func NewPost() PostInterface {
 		SetMetaRobots("").
 		SetSlug("").
 		SetStatus(POST_STATUS_DRAFT).
-		SetPublishedAt(sb.NULL_DATETIME).
 		SetSummary("").
 		SetTitle("").
 		SetPublishedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
 		SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)).
-		SetSoftDeletedAt(sb.MAX_DATETIME).
+		SetSoftDeletedAt(MAX_DATETIME).
 		SetMetas(map[string]string{})
 
 	return o
@@ -49,9 +48,29 @@ func NewPostFromExistingData(data map[string]string) PostInterface {
 }
 
 // postImplementation is the concrete implementation of the PostInterface.
-// It embeds dataobject.DataObject for data storage and change tracking.
+// It uses neat ORM traits for data storage.
 type postImplementation struct {
-	dataobject.DataObject
+	orm.ShortID
+
+	AuthorIDField        string    `db:"author_id"`
+	CanonicalURLField    string    `db:"canonical_url"`
+	ContentField         string    `db:"content"`
+	FeaturedField        string    `db:"featured"`
+	ImageURLField        string    `db:"image_url"`
+	MemoField            string    `db:"memo"`
+	MetaDescriptionField string    `db:"meta_description"`
+	MetaKeywordsField    string    `db:"meta_keywords"`
+	MetaRobotsField      string    `db:"meta_robots"`
+	MetasField           string    `db:"metas"`
+	PublishedAtField     time.Time `db:"published_at"`
+	StatusField          string    `db:"status"`
+	SlugField            string    `db:"slug"`
+	SummaryField         string    `db:"summary"`
+	TitleField           string    `db:"title"`
+
+	CreatedAtField orm.CreatedAt
+	UpdatedAtField orm.UpdatedAt
+	soft_delete.SoftDeletesMaxDate
 }
 
 // ================================== METHODS ==================================
@@ -231,53 +250,54 @@ func (o *postImplementation) SetContent(content string) PostInterface {
 
 // GetCreatedAt returns the creation timestamp as a string.
 func (o *postImplementation) GetCreatedAt() string {
-	return o.Get(COLUMN_CREATED_AT)
+	if o.CreatedAtField.CreatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString()
 }
 
 // SetCreatedAt sets the creation timestamp.
 func (o *postImplementation) SetCreatedAt(createdAt string) PostInterface {
-	o.Set(COLUMN_CREATED_AT, createdAt)
+	if createdAt == "" {
+		return o
+	}
+	o.CreatedAtField.CreatedAt = carbon.Parse(createdAt, carbon.UTC).StdTime()
 	return o
 }
 
 // GetCreatedAtCarbon returns the creation timestamp as a carbon.Carbon instance.
 // Returns the null datetime if the created_at field is empty.
 func (o *postImplementation) GetCreatedAtCarbon() *carbon.Carbon {
-	createdAt := o.GetCreatedAt()
-	if createdAt == "" {
-		return carbon.Parse(sb.NULL_DATETIME)
-	}
-	return carbon.Parse(createdAt)
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt)
 }
 
 // GetCreatedAtTime returns the creation timestamp as a time.Time instance.
 // Returns zero time if the created_at field is empty.
 func (o *postImplementation) GetCreatedAtTime() time.Time {
-	createdAt := o.GetCreatedAt()
-	if createdAt == "" {
-		return time.Time{}
-	}
-	return carbon.Parse(createdAt).StdTime()
+	return o.CreatedAtField.CreatedAt
 }
 
 // GetSoftDeletedAt returns the soft deletion timestamp as a string.
 func (o *postImplementation) GetSoftDeletedAt() string {
-	return o.Get(COLUMN_SOFT_DELETED_AT)
+	if o.SoftDeletedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.SoftDeletedAt).ToDateTimeString()
 }
 
 // GetSoftDeletedAtCarbon returns the soft deletion timestamp as a carbon.Carbon instance.
 // Returns the null datetime if the soft_deleted_at field is empty.
 func (o *postImplementation) GetSoftDeletedAtCarbon() *carbon.Carbon {
-	deletedAt := o.GetSoftDeletedAt()
-	if deletedAt == "" {
-		return carbon.Parse(sb.NULL_DATETIME)
-	}
-	return carbon.Parse(deletedAt)
+	return carbon.CreateFromStdTime(o.SoftDeletedAt)
 }
 
 // SetSoftDeletedAt sets the soft deletion timestamp.
 func (o *postImplementation) SetSoftDeletedAt(deletedAt string) PostInterface {
-	o.Set(COLUMN_SOFT_DELETED_AT, deletedAt)
+	if deletedAt == "" {
+		o.SoftDeletedAt = soft_delete.MaxSoftDeletedAt
+		return o
+	}
+	o.SoftDeletedAt = carbon.Parse(deletedAt, carbon.UTC).StdTime()
 	return o
 }
 
@@ -431,7 +451,7 @@ func (o *postImplementation) SetPublishedAt(status string) PostInterface {
 func (o *postImplementation) GetPublishedAtCarbon() *carbon.Carbon {
 	createdAt := o.GetPublishedAt()
 	if createdAt == "" {
-		return carbon.Parse(sb.NULL_DATETIME)
+		return carbon.Parse(NULL_DATETIME)
 	}
 	return carbon.Parse(createdAt)
 }
@@ -481,67 +501,196 @@ func (o *postImplementation) SetTitle(title string) PostInterface {
 
 // GetUpdatedAt returns the last update timestamp as a string.
 func (o *postImplementation) GetUpdatedAt() string {
-	return o.Get(COLUMN_UPDATED_AT)
+	if o.UpdatedAtField.UpdatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString()
 }
 
 // GetUpdatedAtCarbon returns the last update timestamp as a carbon.Carbon instance.
 // Returns the null datetime if the updated_at field is empty.
 func (o *postImplementation) GetUpdatedAtCarbon() *carbon.Carbon {
-	updatedAt := o.GetUpdatedAt()
-	if updatedAt == "" {
-		return carbon.Parse(sb.NULL_DATETIME)
-	}
-	return carbon.Parse(updatedAt)
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt)
 }
 
 // SetUpdatedAt sets the last update timestamp.
 func (o *postImplementation) SetUpdatedAt(updatedAt string) PostInterface {
-	o.Set(COLUMN_UPDATED_AT, updatedAt)
+	if updatedAt == "" {
+		return o
+	}
+	o.UpdatedAtField.UpdatedAt = carbon.Parse(updatedAt, carbon.UTC).StdTime()
 	return o
 }
 
 // GetData returns all post data as a map.
 func (o *postImplementation) GetData() map[string]string {
-	return o.DataObject.Data()
+	softDeletedAt := o.GetSoftDeletedAt()
+	if softDeletedAt == "" {
+		softDeletedAt = MAX_DATETIME
+	}
+
+	var createdAt, updatedAt string
+	if !o.CreatedAtField.CreatedAt.IsZero() {
+		createdAt = carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString(carbon.UTC)
+	}
+	if !o.UpdatedAtField.UpdatedAt.IsZero() {
+		updatedAt = carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString(carbon.UTC)
+	}
+
+	return map[string]string{
+		COLUMN_ID:               o.ShortID.ID,
+		COLUMN_AUTHOR_ID:        o.AuthorIDField,
+		COLUMN_CANONICAL_URL:    o.CanonicalURLField,
+		COLUMN_CONTENT:          o.ContentField,
+		COLUMN_FEATURED:         o.FeaturedField,
+		COLUMN_IMAGE_URL:        o.ImageURLField,
+		COLUMN_MEMO:             o.MemoField,
+		COLUMN_META_DESCRIPTION: o.MetaDescriptionField,
+		COLUMN_META_KEYWORDS:    o.MetaKeywordsField,
+		COLUMN_META_ROBOTS:      o.MetaRobotsField,
+		COLUMN_METAS:            o.MetasField,
+		COLUMN_PUBLISHED_AT:     carbon.CreateFromStdTime(o.PublishedAtField).ToDateTimeString(carbon.UTC),
+		COLUMN_STATUS:           o.StatusField,
+		COLUMN_SLUG:             o.SlugField,
+		COLUMN_SUMMARY:          o.SummaryField,
+		COLUMN_TITLE:            o.TitleField,
+		COLUMN_CREATED_AT:       createdAt,
+		COLUMN_UPDATED_AT:       updatedAt,
+		COLUMN_SOFT_DELETED_AT:  softDeletedAt,
+	}
 }
 
 // GetDataChanged returns only the fields that have been modified.
+// Since neat ORM traits don't track dirty state, return all fields as changed.
 func (o *postImplementation) GetDataChanged() map[string]string {
-	return o.DataObject.DataChanged()
+	return o.GetData()
 }
 
 // MarkAsNotDirty clears the dirty state of the post.
-// If no columns specified, marks all fields as not dirty.
-// If columns specified, marks only those columns as not dirty.
+// No-op since neat ORM traits don't track dirty state.
 func (o *postImplementation) MarkAsNotDirty(columns ...string) {
-	o.DataObject.MarkAsNotDirty(columns...)
 }
 
 // MarkAsDirty marks the post as dirty.
-// If no columns specified, marks all fields as dirty.
-// If columns specified, marks only those columns as dirty.
+// No-op since neat ORM traits don't track dirty state.
 func (o *postImplementation) MarkAsDirty(columns ...string) {
-	o.DataObject.MarkAsDirty(columns...)
 }
 
 // Get retrieves a value by key from the post data.
 func (o *postImplementation) Get(key string) string {
-	return o.DataObject.Get(key)
+	switch key {
+	case COLUMN_ID:
+		return o.ID
+	case COLUMN_AUTHOR_ID:
+		return o.AuthorIDField
+	case COLUMN_CANONICAL_URL:
+		return o.CanonicalURLField
+	case COLUMN_CONTENT:
+		return o.ContentField
+	case COLUMN_FEATURED:
+		return o.FeaturedField
+	case COLUMN_IMAGE_URL:
+		return o.ImageURLField
+	case COLUMN_MEMO:
+		return o.MemoField
+	case COLUMN_META_DESCRIPTION:
+		return o.MetaDescriptionField
+	case COLUMN_META_KEYWORDS:
+		return o.MetaKeywordsField
+	case COLUMN_META_ROBOTS:
+		return o.MetaRobotsField
+	case COLUMN_METAS:
+		return o.MetasField
+	case COLUMN_PUBLISHED_AT:
+		return carbon.CreateFromStdTime(o.PublishedAtField).ToDateTimeString(carbon.UTC)
+	case COLUMN_STATUS:
+		return o.StatusField
+	case COLUMN_SLUG:
+		return o.SlugField
+	case COLUMN_SUMMARY:
+		return o.SummaryField
+	case COLUMN_TITLE:
+		return o.TitleField
+	case COLUMN_CREATED_AT:
+		if o.CreatedAtField.CreatedAt.IsZero() {
+			return ""
+		}
+		return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString(carbon.UTC)
+	case COLUMN_UPDATED_AT:
+		if o.UpdatedAtField.UpdatedAt.IsZero() {
+			return ""
+		}
+		return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString(carbon.UTC)
+	case COLUMN_SOFT_DELETED_AT:
+		return o.GetSoftDeletedAt()
+	default:
+		return ""
+	}
 }
 
 // Set stores a value by key in the post data.
 func (o *postImplementation) Set(key string, value string) {
-	o.DataObject.Set(key, value)
+	switch key {
+	case COLUMN_ID:
+		o.ShortID.ID = value
+	case COLUMN_AUTHOR_ID:
+		o.AuthorIDField = value
+	case COLUMN_CANONICAL_URL:
+		o.CanonicalURLField = value
+	case COLUMN_CONTENT:
+		o.ContentField = value
+	case COLUMN_FEATURED:
+		o.FeaturedField = value
+	case COLUMN_IMAGE_URL:
+		o.ImageURLField = value
+	case COLUMN_MEMO:
+		o.MemoField = value
+	case COLUMN_META_DESCRIPTION:
+		o.MetaDescriptionField = value
+	case COLUMN_META_KEYWORDS:
+		o.MetaKeywordsField = value
+	case COLUMN_META_ROBOTS:
+		o.MetaRobotsField = value
+	case COLUMN_METAS:
+		o.MetasField = value
+	case COLUMN_PUBLISHED_AT:
+		o.PublishedAtField = carbon.Parse(value).StdTime()
+	case COLUMN_STATUS:
+		o.StatusField = value
+	case COLUMN_SLUG:
+		o.SlugField = value
+	case COLUMN_SUMMARY:
+		o.SummaryField = value
+	case COLUMN_TITLE:
+		o.TitleField = value
+	case COLUMN_CREATED_AT:
+		if value != "" {
+			o.CreatedAtField.CreatedAt = carbon.Parse(value, carbon.UTC).StdTime()
+		}
+	case COLUMN_UPDATED_AT:
+		if value != "" {
+			o.UpdatedAtField.UpdatedAt = carbon.Parse(value, carbon.UTC).StdTime()
+		}
+	case COLUMN_SOFT_DELETED_AT:
+		if value == MAX_DATETIME {
+			o.SoftDeletedAt = soft_delete.MaxSoftDeletedAt
+		} else {
+			o.SoftDeletedAt = carbon.Parse(value, carbon.UTC).StdTime()
+		}
+	}
 }
 
 // Hydrate populates the post with data from a map.
 func (o *postImplementation) Hydrate(data map[string]string) {
-	o.DataObject.Hydrate(data)
+	for key, value := range data {
+		o.Set(key, value)
+	}
 }
 
 // IsDirty returns true if the post has unsaved changes.
+// Always returns false since neat ORM traits don't track dirty state.
 func (o *postImplementation) IsDirty() bool {
-	return o.DataObject.IsDirty()
+	return false
 }
 
 // ============================ TAXONOMY METHODS ============================

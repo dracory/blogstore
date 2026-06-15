@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/dracory/sb"
 	"github.com/dracory/versionstore"
 )
 
@@ -76,7 +75,7 @@ func (store *storeImplementation) versioningCreateIfChanged(ctx context.Context,
 		SetEntityType(entityType).
 		SetEntityID(entityID).
 		SetOrderBy(versionstore.COLUMN_CREATED_AT).
-		SetSortOrder(sb.DESC).
+		SetSortOrder("DESC").
 		SetLimit(1))
 	if err != nil {
 		return err
@@ -115,7 +114,7 @@ func (store *storeImplementation) VersioningCreate(ctx context.Context, version 
 	if store.versioningStore == nil {
 		return nil
 	}
-	return store.versioningStore.VersionCreate(store.toQueryableContext(ctx), version)
+	return store.versioningStore.VersionCreate(ctx, version)
 }
 
 // VersioningDelete permanently removes a version entry from the versioning store.
@@ -123,7 +122,7 @@ func (store *storeImplementation) VersioningDelete(ctx context.Context, version 
 	if store.versioningStore == nil {
 		return nil
 	}
-	return store.versioningStore.VersionDelete(store.toQueryableContext(ctx), version)
+	return store.versioningStore.VersionDelete(ctx, version)
 }
 
 // VersioningDeleteByID permanently removes a version entry by its ID.
@@ -131,7 +130,7 @@ func (store *storeImplementation) VersioningDeleteByID(ctx context.Context, id s
 	if store.versioningStore == nil {
 		return nil
 	}
-	return store.versioningStore.VersionDeleteByID(store.toQueryableContext(ctx), id)
+	return store.versioningStore.VersionDeleteByID(ctx, id)
 }
 
 // VersioningFindByID retrieves a version entry by its ID.
@@ -139,7 +138,7 @@ func (store *storeImplementation) VersioningFindByID(ctx context.Context, versio
 	if store.versioningStore == nil {
 		return nil, nil
 	}
-	return store.versioningStore.VersionFindByID(store.toQueryableContext(ctx), versioningID)
+	return store.versioningStore.VersionFindByID(ctx, versioningID)
 }
 
 // VersioningList retrieves a list of version entries matching the given query.
@@ -147,7 +146,7 @@ func (store *storeImplementation) VersioningList(ctx context.Context, query Vers
 	if store.versioningStore == nil {
 		return []VersioningInterface{}, nil
 	}
-	list, err := store.versioningStore.VersionList(store.toQueryableContext(ctx), query)
+	list, err := store.versioningStore.VersionList(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +161,7 @@ func (store *storeImplementation) VersioningSoftDelete(ctx context.Context, vers
 	if store.versioningStore == nil {
 		return nil
 	}
-	return store.versioningStore.VersionSoftDelete(store.toQueryableContext(ctx), versioning)
+	return store.versioningStore.VersionSoftDelete(ctx, versioning)
 }
 
 // VersioningSoftDeleteByID marks a version entry as deleted by its ID.
@@ -170,7 +169,7 @@ func (store *storeImplementation) VersioningSoftDeleteByID(ctx context.Context, 
 	if store.versioningStore == nil {
 		return nil
 	}
-	return store.versioningStore.VersionSoftDeleteByID(store.toQueryableContext(ctx), id)
+	return store.versioningStore.VersionSoftDeleteByID(ctx, id)
 }
 
 // VersioningUpdate updates an existing version entry in the versioning store.
@@ -178,5 +177,5 @@ func (store *storeImplementation) VersioningUpdate(ctx context.Context, version 
 	if store.versioningStore == nil {
 		return nil
 	}
-	return store.versioningStore.VersionUpdate(store.toQueryableContext(ctx), version)
+	return store.versioningStore.VersionUpdate(ctx, version)
 }

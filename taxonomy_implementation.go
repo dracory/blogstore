@@ -1,9 +1,10 @@
 package blogstore
 
 import (
+	"strconv"
 	"time"
 
-	"github.com/dracory/dataobject"
+	"github.com/dracory/neat/database/orm"
 	"github.com/dracory/str"
 	"github.com/dromara/carbon/v2"
 )
@@ -34,9 +35,16 @@ func NewTaxonomyFromExistingData(data map[string]string) TaxonomyInterface {
 }
 
 // taxonomyImplementation is the concrete implementation of the TaxonomyInterface.
-// It embeds dataobject.DataObject for data storage and change tracking.
+// It uses neat ORM traits for data storage.
 type taxonomyImplementation struct {
-	dataobject.DataObject
+	orm.ShortID
+
+	NameField        string `db:"name"`
+	SlugField        string `db:"slug"`
+	DescriptionField string `db:"description"`
+
+	CreatedAtField orm.CreatedAt
+	UpdatedAtField orm.UpdatedAt
 }
 
 // GetID returns the unique identifier of the taxonomy.
@@ -86,108 +94,157 @@ func (o *taxonomyImplementation) SetDescription(description string) TaxonomyInte
 
 // GetCreatedAt returns the creation timestamp as a string.
 func (o *taxonomyImplementation) GetCreatedAt() string {
-	return o.Get(COLUMN_CREATED_AT)
+	if o.CreatedAtField.CreatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString()
 }
 
 // SetCreatedAt sets the creation timestamp.
 func (o *taxonomyImplementation) SetCreatedAt(createdAt string) TaxonomyInterface {
-	o.Set(COLUMN_CREATED_AT, createdAt)
+	if createdAt == "" {
+		return o
+	}
+	o.CreatedAtField.CreatedAt = carbon.Parse(createdAt, carbon.UTC).StdTime()
 	return o
 }
 
 // GetCreatedAtCarbon returns the creation timestamp as a carbon.Carbon instance.
 // Returns the null datetime if the created_at field is empty.
 func (o *taxonomyImplementation) GetCreatedAtCarbon() *carbon.Carbon {
-	createdAt := o.GetCreatedAt()
-	if createdAt == "" {
-		return carbon.Parse(sb_NULL_DATETIME, carbon.UTC)
-	}
-	return carbon.Parse(createdAt, carbon.UTC)
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt)
 }
 
 // GetCreatedAtTime returns the creation timestamp as a time.Time instance.
 // Returns zero time if the created_at field is empty.
 func (o *taxonomyImplementation) GetCreatedAtTime() time.Time {
-	createdAt := o.GetCreatedAt()
-	if createdAt == "" {
-		return time.Time{}
-	}
-	return carbon.Parse(createdAt, carbon.UTC).StdTime()
+	return o.CreatedAtField.CreatedAt
 }
 
 // GetUpdatedAt returns the last update timestamp as a string.
 func (o *taxonomyImplementation) GetUpdatedAt() string {
-	return o.Get(COLUMN_UPDATED_AT)
+	if o.UpdatedAtField.UpdatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString()
 }
 
 // SetUpdatedAt sets the last update timestamp.
 func (o *taxonomyImplementation) SetUpdatedAt(updatedAt string) TaxonomyInterface {
-	o.Set(COLUMN_UPDATED_AT, updatedAt)
+	if updatedAt == "" {
+		return o
+	}
+	o.UpdatedAtField.UpdatedAt = carbon.Parse(updatedAt, carbon.UTC).StdTime()
 	return o
 }
 
 // GetUpdatedAtCarbon returns the last update timestamp as a carbon.Carbon instance.
 // Returns the null datetime if the updated_at field is empty.
 func (o *taxonomyImplementation) GetUpdatedAtCarbon() *carbon.Carbon {
-	updatedAt := o.GetUpdatedAt()
-	if updatedAt == "" {
-		return carbon.Parse(sb_NULL_DATETIME, carbon.UTC)
-	}
-	return carbon.Parse(updatedAt, carbon.UTC)
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt)
 }
 
 // GetUpdatedAtTime returns the last update timestamp as a time.Time instance.
 // Returns zero time if the updated_at field is empty.
 func (o *taxonomyImplementation) GetUpdatedAtTime() time.Time {
-	updatedAt := o.GetUpdatedAt()
-	if updatedAt == "" {
-		return time.Time{}
-	}
-	return carbon.Parse(updatedAt, carbon.UTC).StdTime()
+	return o.UpdatedAtField.UpdatedAt
 }
 
 // GetData returns all taxonomy data as a map.
 func (o *taxonomyImplementation) GetData() map[string]string {
-	return o.DataObject.Data()
+	var createdAt, updatedAt string
+	if !o.CreatedAtField.CreatedAt.IsZero() {
+		createdAt = carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString(carbon.UTC)
+	}
+	if !o.UpdatedAtField.UpdatedAt.IsZero() {
+		updatedAt = carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString(carbon.UTC)
+	}
+
+	return map[string]string{
+		COLUMN_ID:          o.ShortID.ID,
+		COLUMN_NAME:        o.NameField,
+		COLUMN_SLUG:        o.SlugField,
+		COLUMN_DESCRIPTION: o.DescriptionField,
+		COLUMN_CREATED_AT:  createdAt,
+		COLUMN_UPDATED_AT:  updatedAt,
+	}
 }
 
 // GetDataChanged returns only the fields that have been modified.
+// Since neat ORM traits don't track dirty state, return all fields as changed.
 func (o *taxonomyImplementation) GetDataChanged() map[string]string {
-	return o.DataObject.DataChanged()
+	return o.GetData()
 }
 
 // MarkAsNotDirty clears the dirty state of the taxonomy.
-// If no columns specified, marks all fields as not dirty.
-// If columns specified, marks only those columns as not dirty.
+// No-op since neat ORM traits don't track dirty state.
 func (o *taxonomyImplementation) MarkAsNotDirty(columns ...string) {
-	o.DataObject.MarkAsNotDirty(columns...)
 }
 
 // MarkAsDirty marks the taxonomy as dirty.
-// If no columns specified, marks all fields as dirty.
-// If columns specified, marks only those columns as dirty.
+// No-op since neat ORM traits don't track dirty state.
 func (o *taxonomyImplementation) MarkAsDirty(columns ...string) {
-	o.DataObject.MarkAsDirty(columns...)
 }
 
 // Get retrieves a value by key from the taxonomy data.
 func (o *taxonomyImplementation) Get(key string) string {
-	return o.DataObject.Get(key)
+	switch key {
+	case COLUMN_ID:
+		return o.ID
+	case COLUMN_NAME:
+		return o.NameField
+	case COLUMN_SLUG:
+		return o.SlugField
+	case COLUMN_DESCRIPTION:
+		return o.DescriptionField
+	case COLUMN_CREATED_AT:
+		if o.CreatedAtField.CreatedAt.IsZero() {
+			return ""
+		}
+		return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString(carbon.UTC)
+	case COLUMN_UPDATED_AT:
+		if o.UpdatedAtField.UpdatedAt.IsZero() {
+			return ""
+		}
+		return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString(carbon.UTC)
+	default:
+		return ""
+	}
 }
 
 // Set stores a value by key in the taxonomy data.
 func (o *taxonomyImplementation) Set(key string, value string) {
-	o.DataObject.Set(key, value)
+	switch key {
+	case COLUMN_ID:
+		o.ShortID.ID = value
+	case COLUMN_NAME:
+		o.NameField = value
+	case COLUMN_SLUG:
+		o.SlugField = value
+	case COLUMN_DESCRIPTION:
+		o.DescriptionField = value
+	case COLUMN_CREATED_AT:
+		if value != "" {
+			o.CreatedAtField.CreatedAt = carbon.Parse(value, carbon.UTC).StdTime()
+		}
+	case COLUMN_UPDATED_AT:
+		if value != "" {
+			o.UpdatedAtField.UpdatedAt = carbon.Parse(value, carbon.UTC).StdTime()
+		}
+	}
 }
 
 // Hydrate populates the taxonomy with data from a map.
 func (o *taxonomyImplementation) Hydrate(data map[string]string) {
-	o.DataObject.Hydrate(data)
+	for key, value := range data {
+		o.Set(key, value)
+	}
 }
 
 // IsDirty returns true if the taxonomy has unsaved changes.
+// Always returns false since neat ORM traits don't track dirty state.
 func (o *taxonomyImplementation) IsDirty() bool {
-	return o.DataObject.IsDirty()
+	return false
 }
 
 // ============================ TERM ============================
@@ -220,9 +277,20 @@ func NewTermFromExistingData(data map[string]string) TermInterface {
 }
 
 // termImplementation is the concrete implementation of the TermInterface.
-// It embeds dataobject.DataObject for data storage and change tracking.
+// It uses neat ORM traits for data storage.
 type termImplementation struct {
-	dataobject.DataObject
+	orm.ShortID
+
+	TaxonomyIDField  string `db:"taxonomy_id"`
+	ParentIDField    string `db:"parent_id"`
+	SequenceField    int    `db:"sequence"`
+	NameField        string `db:"name"`
+	SlugField        string `db:"slug"`
+	DescriptionField string `db:"description"`
+	CountField       int    `db:"count"`
+
+	CreatedAtField orm.CreatedAt
+	UpdatedAtField orm.UpdatedAt
 }
 
 // GetID returns the unique identifier of the term.
@@ -259,22 +327,13 @@ func (o *termImplementation) SetParentID(parentID string) TermInterface {
 }
 
 // GetSequence returns the display sequence/order of the term.
-// Returns 0 if the sequence field is empty or cannot be parsed.
 func (o *termImplementation) GetSequence() int {
-	seqStr := o.Get(COLUMN_SEQUENCE)
-	if seqStr == "" {
-		return 0
-	}
-	var seq int
-	if _, err := parseInt(seqStr, &seq); err != nil {
-		return 0
-	}
-	return seq
+	return o.SequenceField
 }
 
 // SetSequence sets the display sequence/order of the term.
 func (o *termImplementation) SetSequence(sequence int) TermInterface {
-	o.Set(COLUMN_SEQUENCE, intToString(sequence))
+	o.SequenceField = sequence
 	return o
 }
 
@@ -313,130 +372,193 @@ func (o *termImplementation) SetDescription(description string) TermInterface {
 }
 
 // GetCount returns the number of posts associated with this term.
-// Returns 0 if the count field is empty or cannot be parsed.
 func (o *termImplementation) GetCount() int {
-	countStr := o.Get(COLUMN_COUNT)
-	if countStr == "" {
-		return 0
-	}
-	// Safe conversion
-	var count int
-	if _, err := parseInt(countStr, &count); err != nil {
-		return 0
-	}
-	return count
+	return o.CountField
 }
 
 // SetCount sets the number of posts associated with this term.
 func (o *termImplementation) SetCount(count int) TermInterface {
-	o.Set(COLUMN_COUNT, intToString(count))
+	o.CountField = count
 	return o
 }
 
 // GetCreatedAt returns the creation timestamp as a string.
 func (o *termImplementation) GetCreatedAt() string {
-	return o.Get(COLUMN_CREATED_AT)
+	if o.CreatedAtField.CreatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString()
 }
 
 // SetCreatedAt sets the creation timestamp.
 func (o *termImplementation) SetCreatedAt(createdAt string) TermInterface {
-	o.Set(COLUMN_CREATED_AT, createdAt)
+	if createdAt == "" {
+		return o
+	}
+	o.CreatedAtField.CreatedAt = carbon.Parse(createdAt, carbon.UTC).StdTime()
 	return o
 }
 
 // GetCreatedAtCarbon returns the creation timestamp as a carbon.Carbon instance.
 // Returns the null datetime if the created_at field is empty.
 func (o *termImplementation) GetCreatedAtCarbon() *carbon.Carbon {
-	createdAt := o.GetCreatedAt()
-	if createdAt == "" {
-		return carbon.Parse(sb_NULL_DATETIME, carbon.UTC)
-	}
-	return carbon.Parse(createdAt, carbon.UTC)
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt)
 }
 
 // GetCreatedAtTime returns the creation timestamp as a time.Time instance.
 // Returns zero time if the created_at field is empty.
 func (o *termImplementation) GetCreatedAtTime() time.Time {
-	createdAt := o.GetCreatedAt()
-	if createdAt == "" {
-		return time.Time{}
-	}
-	return carbon.Parse(createdAt, carbon.UTC).StdTime()
+	return o.CreatedAtField.CreatedAt
 }
 
 // GetUpdatedAt returns the last update timestamp as a string.
 func (o *termImplementation) GetUpdatedAt() string {
-	return o.Get(COLUMN_UPDATED_AT)
+	if o.UpdatedAtField.UpdatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString()
 }
 
 // SetUpdatedAt sets the last update timestamp.
 func (o *termImplementation) SetUpdatedAt(updatedAt string) TermInterface {
-	o.Set(COLUMN_UPDATED_AT, updatedAt)
+	if updatedAt == "" {
+		return o
+	}
+	o.UpdatedAtField.UpdatedAt = carbon.Parse(updatedAt, carbon.UTC).StdTime()
 	return o
 }
 
 // GetUpdatedAtCarbon returns the last update timestamp as a carbon.Carbon instance.
 // Returns the null datetime if the updated_at field is empty.
 func (o *termImplementation) GetUpdatedAtCarbon() *carbon.Carbon {
-	updatedAt := o.GetUpdatedAt()
-	if updatedAt == "" {
-		return carbon.Parse(sb_NULL_DATETIME, carbon.UTC)
-	}
-	return carbon.Parse(updatedAt, carbon.UTC)
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt)
 }
 
 // GetUpdatedAtTime returns the last update timestamp as a time.Time instance.
 // Returns zero time if the updated_at field is empty.
 func (o *termImplementation) GetUpdatedAtTime() time.Time {
-	updatedAt := o.GetUpdatedAt()
-	if updatedAt == "" {
-		return time.Time{}
-	}
-	return carbon.Parse(updatedAt, carbon.UTC).StdTime()
+	return o.UpdatedAtField.UpdatedAt
 }
 
 // GetData returns all term data as a map.
 func (o *termImplementation) GetData() map[string]string {
-	return o.DataObject.Data()
+	var createdAt, updatedAt string
+	if !o.CreatedAtField.CreatedAt.IsZero() {
+		createdAt = carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString(carbon.UTC)
+	}
+	if !o.UpdatedAtField.UpdatedAt.IsZero() {
+		updatedAt = carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString(carbon.UTC)
+	}
+
+	return map[string]string{
+		COLUMN_ID:          o.ShortID.ID,
+		COLUMN_TAXONOMY_ID: o.TaxonomyIDField,
+		COLUMN_PARENT_ID:   o.ParentIDField,
+		COLUMN_SEQUENCE:    strconv.Itoa(o.SequenceField),
+		COLUMN_NAME:        o.NameField,
+		COLUMN_SLUG:        o.SlugField,
+		COLUMN_DESCRIPTION: o.DescriptionField,
+		COLUMN_COUNT:       strconv.Itoa(o.CountField),
+		COLUMN_CREATED_AT:  createdAt,
+		COLUMN_UPDATED_AT:  updatedAt,
+	}
 }
 
 // GetDataChanged returns only the fields that have been modified.
+// Since neat ORM traits don't track dirty state, return all fields as changed.
 func (o *termImplementation) GetDataChanged() map[string]string {
-	return o.DataObject.DataChanged()
+	return o.GetData()
 }
 
 // MarkAsNotDirty clears the dirty state of the term.
-// If no columns specified, marks all fields as not dirty.
-// If columns specified, marks only those columns as not dirty.
+// No-op since neat ORM traits don't track dirty state.
 func (o *termImplementation) MarkAsNotDirty(columns ...string) {
-	o.DataObject.MarkAsNotDirty(columns...)
 }
 
 // MarkAsDirty marks the term as dirty.
-// If no columns specified, marks all fields as dirty.
-// If columns specified, marks only those columns as dirty.
+// No-op since neat ORM traits don't track dirty state.
 func (o *termImplementation) MarkAsDirty(columns ...string) {
-	o.DataObject.MarkAsDirty(columns...)
 }
 
 // Get retrieves a value by key from the term data.
 func (o *termImplementation) Get(key string) string {
-	return o.DataObject.Get(key)
+	switch key {
+	case COLUMN_ID:
+		return o.ID
+	case COLUMN_TAXONOMY_ID:
+		return o.TaxonomyIDField
+	case COLUMN_PARENT_ID:
+		return o.ParentIDField
+	case COLUMN_SEQUENCE:
+		return strconv.Itoa(o.SequenceField)
+	case COLUMN_NAME:
+		return o.NameField
+	case COLUMN_SLUG:
+		return o.SlugField
+	case COLUMN_DESCRIPTION:
+		return o.DescriptionField
+	case COLUMN_COUNT:
+		return strconv.Itoa(o.CountField)
+	case COLUMN_CREATED_AT:
+		if o.CreatedAtField.CreatedAt.IsZero() {
+			return ""
+		}
+		return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString(carbon.UTC)
+	case COLUMN_UPDATED_AT:
+		if o.UpdatedAtField.UpdatedAt.IsZero() {
+			return ""
+		}
+		return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString(carbon.UTC)
+	default:
+		return ""
+	}
 }
 
 // Set stores a value by key in the term data.
 func (o *termImplementation) Set(key string, value string) {
-	o.DataObject.Set(key, value)
+	switch key {
+	case COLUMN_ID:
+		o.ShortID.ID = value
+	case COLUMN_TAXONOMY_ID:
+		o.TaxonomyIDField = value
+	case COLUMN_PARENT_ID:
+		o.ParentIDField = value
+	case COLUMN_SEQUENCE:
+		if seq, err := strconv.Atoi(value); err == nil {
+			o.SequenceField = seq
+		}
+	case COLUMN_NAME:
+		o.NameField = value
+	case COLUMN_SLUG:
+		o.SlugField = value
+	case COLUMN_DESCRIPTION:
+		o.DescriptionField = value
+	case COLUMN_COUNT:
+		if count, err := strconv.Atoi(value); err == nil {
+			o.CountField = count
+		}
+	case COLUMN_CREATED_AT:
+		if value != "" {
+			o.CreatedAtField.CreatedAt = carbon.Parse(value, carbon.UTC).StdTime()
+		}
+	case COLUMN_UPDATED_AT:
+		if value != "" {
+			o.UpdatedAtField.UpdatedAt = carbon.Parse(value, carbon.UTC).StdTime()
+		}
+	}
 }
 
 // Hydrate populates the term with data from a map.
 func (o *termImplementation) Hydrate(data map[string]string) {
-	o.DataObject.Hydrate(data)
+	for key, value := range data {
+		o.Set(key, value)
+	}
 }
 
 // IsDirty returns true if the term has unsaved changes.
+// Always returns false since neat ORM traits don't track dirty state.
 func (o *termImplementation) IsDirty() bool {
-	return o.DataObject.IsDirty()
+	return false
 }
 
 // ============================ TERM RELATION ============================
@@ -465,9 +587,16 @@ func NewTermRelationFromExistingData(data map[string]string) TermRelationInterfa
 }
 
 // termRelationImplementation is the concrete implementation of the TermRelationInterface.
-// It embeds dataobject.DataObject for data storage and change tracking.
+// It uses neat ORM traits for data storage.
 type termRelationImplementation struct {
-	dataobject.DataObject
+	orm.ShortID
+
+	PostIDField   string `db:"post_id"`
+	TermIDField   string `db:"term_id"`
+	SequenceField int    `db:"sequence"`
+
+	CreatedAtField orm.CreatedAt
+	UpdatedAtField orm.UpdatedAt
 }
 
 // GetID returns the unique identifier of the term relation.
@@ -504,178 +633,169 @@ func (o *termRelationImplementation) SetTermID(termID string) TermRelationInterf
 }
 
 // GetSequence returns the display sequence/order of the relation.
-// Returns 0 if the sequence field is empty or cannot be parsed.
 func (o *termRelationImplementation) GetSequence() int {
-	seqStr := o.Get(COLUMN_SEQUENCE)
-	if seqStr == "" {
-		return 0
-	}
-	var seq int
-	if _, err := parseInt(seqStr, &seq); err != nil {
-		return 0
-	}
-	return seq
+	return o.SequenceField
 }
 
 // SetSequence sets the display sequence/order of the relation.
 func (o *termRelationImplementation) SetSequence(sequence int) TermRelationInterface {
-	o.Set(COLUMN_SEQUENCE, intToString(sequence))
+	o.SequenceField = sequence
 	return o
 }
 
 // GetCreatedAt returns the creation timestamp as a string.
 func (o *termRelationImplementation) GetCreatedAt() string {
-	return o.Get(COLUMN_CREATED_AT)
+	if o.CreatedAtField.CreatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString()
 }
 
 // SetCreatedAt sets the creation timestamp.
 func (o *termRelationImplementation) SetCreatedAt(createdAt string) TermRelationInterface {
-	o.Set(COLUMN_CREATED_AT, createdAt)
+	if createdAt == "" {
+		return o
+	}
+	o.CreatedAtField.CreatedAt = carbon.Parse(createdAt, carbon.UTC).StdTime()
 	return o
 }
 
 // GetCreatedAtCarbon returns the creation timestamp as a carbon.Carbon instance.
 // Returns the null datetime if the created_at field is empty.
 func (o *termRelationImplementation) GetCreatedAtCarbon() *carbon.Carbon {
-	createdAt := o.GetCreatedAt()
-	if createdAt == "" {
-		return carbon.Parse(sb_NULL_DATETIME, carbon.UTC)
-	}
-	return carbon.Parse(createdAt, carbon.UTC)
+	return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt)
 }
 
 // GetCreatedAtTime returns the creation timestamp as a time.Time instance.
 // Returns zero time if the created_at field is empty.
 func (o *termRelationImplementation) GetCreatedAtTime() time.Time {
-	createdAt := o.GetCreatedAt()
-	if createdAt == "" {
-		return time.Time{}
-	}
-	return carbon.Parse(createdAt, carbon.UTC).StdTime()
+	return o.CreatedAtField.CreatedAt
 }
 
 // GetUpdatedAt returns the last update timestamp as a string.
 func (o *termRelationImplementation) GetUpdatedAt() string {
-	return o.Get(COLUMN_UPDATED_AT)
+	if o.UpdatedAtField.UpdatedAt.IsZero() {
+		return ""
+	}
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString()
 }
 
 // SetUpdatedAt sets the last update timestamp.
 func (o *termRelationImplementation) SetUpdatedAt(updatedAt string) TermRelationInterface {
-	o.Set(COLUMN_UPDATED_AT, updatedAt)
+	if updatedAt == "" {
+		return o
+	}
+	o.UpdatedAtField.UpdatedAt = carbon.Parse(updatedAt, carbon.UTC).StdTime()
 	return o
 }
 
 // GetUpdatedAtCarbon returns the last update timestamp as a carbon.Carbon instance.
 // Returns the null datetime if the updated_at field is empty.
 func (o *termRelationImplementation) GetUpdatedAtCarbon() *carbon.Carbon {
-	updatedAt := o.GetUpdatedAt()
-	if updatedAt == "" {
-		return carbon.Parse(sb_NULL_DATETIME, carbon.UTC)
-	}
-	return carbon.Parse(updatedAt, carbon.UTC)
+	return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt)
 }
 
 // GetUpdatedAtTime returns the last update timestamp as a time.Time instance.
 // Returns zero time if the updated_at field is empty.
 func (o *termRelationImplementation) GetUpdatedAtTime() time.Time {
-	updatedAt := o.GetUpdatedAt()
-	if updatedAt == "" {
-		return time.Time{}
-	}
-	return carbon.Parse(updatedAt, carbon.UTC).StdTime()
+	return o.UpdatedAtField.UpdatedAt
 }
 
 // GetData returns all term relation data as a map.
 func (o *termRelationImplementation) GetData() map[string]string {
-	return o.DataObject.Data()
+	var createdAt, updatedAt string
+	if !o.CreatedAtField.CreatedAt.IsZero() {
+		createdAt = carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString(carbon.UTC)
+	}
+	if !o.UpdatedAtField.UpdatedAt.IsZero() {
+		updatedAt = carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString(carbon.UTC)
+	}
+
+	return map[string]string{
+		COLUMN_ID:         o.ShortID.ID,
+		COLUMN_POST_ID:    o.PostIDField,
+		COLUMN_TERM_ID:    o.TermIDField,
+		COLUMN_SEQUENCE:   strconv.Itoa(o.SequenceField),
+		COLUMN_CREATED_AT: createdAt,
+		COLUMN_UPDATED_AT: updatedAt,
+	}
 }
 
 // GetDataChanged returns only the fields that have been modified.
+// Since neat ORM traits don't track dirty state, return all fields as changed.
 func (o *termRelationImplementation) GetDataChanged() map[string]string {
-	return o.DataObject.DataChanged()
+	return o.GetData()
 }
 
 // MarkAsNotDirty clears the dirty state of the term relation.
-// If no columns specified, marks all fields as not dirty.
-// If columns specified, marks only those columns as not dirty.
+// No-op since neat ORM traits don't track dirty state.
 func (o *termRelationImplementation) MarkAsNotDirty(columns ...string) {
-	o.DataObject.MarkAsNotDirty(columns...)
 }
 
 // MarkAsDirty marks the term relation as dirty.
-// If no columns specified, marks all fields as dirty.
-// If columns specified, marks only those columns as dirty.
+// No-op since neat ORM traits don't track dirty state.
 func (o *termRelationImplementation) MarkAsDirty(columns ...string) {
-	o.DataObject.MarkAsDirty(columns...)
 }
 
 // Get retrieves a value by key from the term relation data.
 func (o *termRelationImplementation) Get(key string) string {
-	return o.DataObject.Get(key)
+	switch key {
+	case COLUMN_ID:
+		return o.ShortID.ID
+	case COLUMN_POST_ID:
+		return o.PostIDField
+	case COLUMN_TERM_ID:
+		return o.TermIDField
+	case COLUMN_SEQUENCE:
+		return strconv.Itoa(o.SequenceField)
+	case COLUMN_CREATED_AT:
+		if o.CreatedAtField.CreatedAt.IsZero() {
+			return ""
+		}
+		return carbon.CreateFromStdTime(o.CreatedAtField.CreatedAt).ToDateTimeString(carbon.UTC)
+	case COLUMN_UPDATED_AT:
+		if o.UpdatedAtField.UpdatedAt.IsZero() {
+			return ""
+		}
+		return carbon.CreateFromStdTime(o.UpdatedAtField.UpdatedAt).ToDateTimeString(carbon.UTC)
+	default:
+		return ""
+	}
 }
 
 // Set stores a value by key in the term relation data.
 func (o *termRelationImplementation) Set(key string, value string) {
-	o.DataObject.Set(key, value)
+	switch key {
+	case COLUMN_ID:
+		o.ShortID.ID = value
+	case COLUMN_POST_ID:
+		o.PostIDField = value
+	case COLUMN_TERM_ID:
+		o.TermIDField = value
+	case COLUMN_SEQUENCE:
+		if seq, err := strconv.Atoi(value); err == nil {
+			o.SequenceField = seq
+		}
+	case COLUMN_CREATED_AT:
+		if value != "" {
+			o.CreatedAtField.CreatedAt = carbon.Parse(value, carbon.UTC).StdTime()
+		}
+	case COLUMN_UPDATED_AT:
+		if value != "" {
+			o.UpdatedAtField.UpdatedAt = carbon.Parse(value, carbon.UTC).StdTime()
+		}
+	}
 }
 
 // Hydrate populates the term relation with data from a map.
 func (o *termRelationImplementation) Hydrate(data map[string]string) {
-	o.DataObject.Hydrate(data)
+	for key, value := range data {
+		o.Set(key, value)
+	}
 }
 
 // IsDirty returns true if the term relation has unsaved changes.
+// Always returns false since neat ORM traits don't track dirty state.
 func (o *termRelationImplementation) IsDirty() bool {
-	return o.DataObject.IsDirty()
-}
-
-// Helper functions
-
-// sb_NULL_DATETIME is the default null datetime value used when timestamps are empty.
-var sb_NULL_DATETIME = "1970-01-01 00:00:00"
-
-// parseInt parses a string into an integer without using strconv.
-// It handles negative numbers and returns an error for invalid input.
-func parseInt(s string, v *int) (int, error) {
-	// Simple parse implementation
-	result := 0
-	negative := false
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c < '0' || c > '9' {
-			if i == 0 && c == '-' {
-				negative = true
-				continue
-			}
-			return 0, nil
-		}
-		result = result*10 + int(c-'0')
-	}
-	if negative {
-		result = -result
-	}
-	*v = result
-	return result, nil
-}
-
-// intToString converts an integer to a string without using strconv.
-// It properly handles negative numbers and zero.
-func intToString(i int) string {
-	// Simple implementation without strconv
-	if i == 0 {
-		return "0"
-	}
-	negative := i < 0
-	if negative {
-		i = -i
-	}
-	result := ""
-	for i > 0 {
-		result = string(rune('0'+i%10)) + result
-		i /= 10
-	}
-	if negative {
-		result = "-" + result
-	}
-	return result
+	return false
 }

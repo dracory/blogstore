@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/dracory/sb"
+	"github.com/dracory/neat"
 	"github.com/dracory/versionstore"
 )
 
@@ -16,7 +16,6 @@ type NewStoreOptions struct {
 	TermTableName         string
 	TermRelationTableName string
 	DB                    *sql.DB
-	DbDriverName          string
 	TimeoutSeconds        int64
 	AutomigrateEnabled    bool
 	DebugEnabled          bool
@@ -51,8 +50,9 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 		return nil, errors.New("blog store: DB is required")
 	}
 
-	if opts.DbDriverName == "" {
-		opts.DbDriverName = sb.DatabaseDriverName(opts.DB)
+	neatDB, err := neat.NewFromSQLDB(opts.DB)
+	if err != nil {
+		return nil, err
 	}
 
 	if opts.VersioningEnabled && opts.VersioningTableName == "" {
@@ -82,8 +82,7 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 		termTableName:         opts.TermTableName,
 		termRelationTableName: opts.TermRelationTableName,
 		automigrateEnabled:    opts.AutomigrateEnabled,
-		db:                    opts.DB,
-		dbDriverName:          opts.DbDriverName,
+		db:                    neatDB,
 		debugEnabled:          opts.DebugEnabled,
 		versioningEnabled:     opts.VersioningEnabled,
 		versioningStore:       versionStore,
@@ -93,7 +92,9 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 	store.timeoutSeconds = 2 * 60 * 60 // 2 hours
 
 	if store.automigrateEnabled {
-		store.MigrateUp(context.Background())
+		if err := store.MigrateUp(context.Background()); err != nil {
+			return nil, err
+		}
 	}
 
 	return store, nil

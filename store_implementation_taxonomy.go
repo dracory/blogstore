@@ -3,14 +3,10 @@ package blogstore
 import (
 	"context"
 	"errors"
-	"log"
-	"strconv"
+	"time"
 
-	"github.com/doug-martin/goqu/v9"
-	"github.com/dracory/database"
-	"github.com/dracory/sb"
+	contractsorm "github.com/dracory/neat/contracts/database/orm"
 	"github.com/dromara/carbon/v2"
-	"github.com/samber/lo"
 )
 
 // ============================ TAXONOMY STORE METHODS ============================
@@ -18,86 +14,95 @@ import (
 // TaxonomyCount returns the total number of taxonomies matching the given query options.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyCount(ctx context.Context, options TaxonomyQueryOptions) (int64, error) {
+	if ctx == nil {
+		return 0, errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return -1, errors.New("taxonomy is not enabled")
 	}
-	options.CountOnly = true
-	q := store.taxonomyQuery(options)
 
-	sqlStr, params, errSql := q.Prepared(true).
-		Limit(1).
-		Select(goqu.COUNT(goqu.Star()).As("count")).
-		ToSQL()
+	q := store.buildTaxonomyQuery(options)
 
-	if errSql != nil {
-		return -1, errSql
+	var count int64
+	err := q.Table(store.taxonomyTableName).Count(&count)
+	return count, err
+}
+
+// buildTaxonomyQuery builds a neat query from the taxonomy query options.
+func (store *storeImplementation) buildTaxonomyQuery(options TaxonomyQueryOptions) contractsorm.Query {
+	q := store.db.Query()
+
+	if options.ID != "" {
+		q = q.Where(COLUMN_ID+" = ?", options.ID)
 	}
 
-	if store.debugEnabled {
-		log.Println(sqlStr)
+	if options.Slug != "" {
+		q = q.Where(COLUMN_SLUG+" = ?", options.Slug)
 	}
 
-	mapped, err := database.SelectToMapString(
-		database.NewQueryableContext(ctx, store.db),
-		sqlStr,
-		params...,
-	)
-
-	if err != nil {
-		return -1, err
+	if options.Limit > 0 {
+		q = q.Limit(options.Limit)
 	}
 
-	if len(mapped) < 1 {
-		return -1, nil
+	if options.Offset > 0 {
+		q = q.Offset(options.Offset)
 	}
 
-	countStr := mapped[0]["count"]
-	i, err := strconv.ParseInt(countStr, 10, 64)
-	if err != nil {
-		return -1, err
-	}
-
-	return i, nil
+	return q
 }
 
 // TaxonomyCreate inserts a new taxonomy into the database.
 // Sets the created_at and updated_at timestamps automatically.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyCreate(ctx context.Context, taxonomy TaxonomyInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
-	taxonomy.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
+	if taxonomy == nil {
+		return errors.New("taxonomy is nil")
+	}
+
+	if taxonomy.GetID() == "" {
+		taxonomy.SetID(GenerateShortID())
+	}
+
+	if taxonomy.GetCreatedAt() == "" {
+		taxonomy.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	}
+	if taxonomy.GetUpdatedAt() == "" {
+		taxonomy.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	}
 
 	data := taxonomy.GetData()
+	delete(data, COLUMN_ID)
+	delete(data, COLUMN_CREATED_AT)
+	delete(data, COLUMN_UPDATED_AT)
 
-	sqlStr, sqlParams, errSql := goqu.Dialect(store.dbDriverName).
-		Insert(store.taxonomyTableName).
-		Prepared(true).
-		Rows(data).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, sqlParams...)
-
+	db, err := store.db.DB()
 	if err != nil {
 		return err
 	}
+	_, err = db.ExecContext(ctx, "INSERT INTO "+store.taxonomyTableName+" (id, name, slug, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+		taxonomy.GetID(),
+		taxonomy.GetName(),
+		taxonomy.GetSlug(),
+		taxonomy.GetDescription(),
+		taxonomy.GetCreatedAtCarbon().StdTime(),
+		taxonomy.GetUpdatedAtCarbon().StdTime(),
+	)
 
-	taxonomy.MarkAsNotDirty()
-	return nil
+	return err
 }
 
 // TaxonomyDelete permanently removes a taxonomy from the database.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyDelete(ctx context.Context, taxonomy TaxonomyInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -118,22 +123,10 @@ func (store *storeImplementation) TaxonomyDeleteByID(ctx context.Context, id str
 		return errors.New("taxonomy id is empty")
 	}
 
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Delete(store.taxonomyTableName).
-		Where(goqu.C(COLUMN_ID).Eq(id)).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, params...)
-
+	_, err := store.db.Query().
+		Table(store.taxonomyTableName).
+		Where(COLUMN_ID+" = ?", id).
+		Delete()
 	return err
 }
 
@@ -195,36 +188,39 @@ func (store *storeImplementation) TaxonomyList(ctx context.Context, options Taxo
 	if !store.taxonomyEnabled {
 		return []TaxonomyInterface{}, errors.New("taxonomy is not enabled")
 	}
-	q := store.taxonomyQuery(options)
-
-	sqlStr, sqlParams, errSql := q.Select().
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		log.Println(errSql)
-		return []TaxonomyInterface{}, errSql
+	if ctx == nil {
+		return nil, errors.New("ctx is nil")
 	}
 
-	if store.debugEnabled {
-		log.Println(sqlStr)
+	type taxonomyRow struct {
+		ID          string    `db:"id"`
+		Name        string    `db:"name"`
+		Slug        string    `db:"slug"`
+		Description string    `db:"description"`
+		CreatedAt   time.Time `db:"created_at"`
+		UpdatedAt   time.Time `db:"updated_at"`
 	}
 
-	modelMaps, err := database.SelectToMapString(
-		database.NewQueryableContext(ctx, store.db),
-		sqlStr,
-		sqlParams...,
-	)
-	if err != nil {
+	q := store.buildTaxonomyQuery(options)
+
+	var rows []taxonomyRow
+	if err := q.Table(store.taxonomyTableName).Get(&rows); err != nil {
 		return []TaxonomyInterface{}, err
 	}
 
-	list := []TaxonomyInterface{}
-
-	lo.ForEach(modelMaps, func(modelMap map[string]string, index int) {
-		model := NewTaxonomyFromExistingData(modelMap)
-		list = append(list, model)
-	})
+	list := make([]TaxonomyInterface, 0, len(rows))
+	for _, r := range rows {
+		t := NewTaxonomy()
+		t.SetID(r.ID)
+		t.SetName(r.Name)
+		t.SetSlug(r.Slug)
+		t.SetDescription(r.Description)
+		if taxImpl, ok := t.(*taxonomyImplementation); ok {
+			taxImpl.CreatedAtField.CreatedAt = r.CreatedAt
+			taxImpl.UpdatedAtField.UpdatedAt = r.UpdatedAt
+		}
+		list = append(list, t)
+	}
 
 	return list, nil
 }
@@ -232,6 +228,9 @@ func (store *storeImplementation) TaxonomyList(ctx context.Context, options Taxo
 // TaxonomyUpdate updates an existing taxonomy in the database.
 // Only changed fields are updated. Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TaxonomyUpdate(ctx context.Context, taxonomy TaxonomyInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -239,96 +238,19 @@ func (store *storeImplementation) TaxonomyUpdate(ctx context.Context, taxonomy T
 		return errors.New("taxonomy is nil")
 	}
 
-	dataChanged := taxonomy.GetDataChanged()
+	taxonomy.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
-	delete(dataChanged, "id")
-
-	if len(dataChanged) < 1 {
-		return nil
-	}
-
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Update(store.taxonomyTableName).
-		Set(dataChanged).
-		Where(goqu.C(COLUMN_ID).Eq(taxonomy.GetID())).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, params...)
-
-	taxonomy.MarkAsNotDirty()
+	_, err := store.db.Query().
+		Table(store.taxonomyTableName).
+		Where(COLUMN_ID+" = ?", taxonomy.GetID()).
+		Update(map[string]interface{}{
+			COLUMN_NAME:        taxonomy.GetName(),
+			COLUMN_SLUG:        taxonomy.GetSlug(),
+			COLUMN_DESCRIPTION: taxonomy.GetDescription(),
+			COLUMN_UPDATED_AT:  taxonomy.GetUpdatedAtCarbon().StdTime(),
+		})
 
 	return err
-}
-
-// taxonomyQuery builds a goqu SelectDataset for querying taxonomies based on options.
-func (store *storeImplementation) taxonomyQuery(options TaxonomyQueryOptions) *goqu.SelectDataset {
-	q := goqu.Dialect(store.dbDriverName).
-		From(store.taxonomyTableName)
-
-	if options.ID != "" {
-		q = q.Where(goqu.C(COLUMN_ID).Eq(options.ID))
-	}
-
-	if options.Slug != "" {
-		q = q.Where(goqu.C(COLUMN_SLUG).Eq(options.Slug))
-	}
-
-	if options.Search != "" {
-		var searchExpr goqu.Expression
-		switch store.dbDriverName {
-		case "sqlite3", "sqlite":
-			// SQLite: use LOWER() for case-insensitive matching
-			searchPattern := "%" + options.Search + "%"
-			searchExpr = goqu.Or(
-				goqu.L("LOWER(?)", goqu.C(COLUMN_NAME)).Like(goqu.L("LOWER(?)", searchPattern)),
-				goqu.L("LOWER(?)", goqu.C(COLUMN_DESCRIPTION)).Like(goqu.L("LOWER(?)", searchPattern)),
-			)
-		default:
-			// PostgreSQL, MySQL: use ILike
-			searchExpr = goqu.Or(
-				goqu.C(COLUMN_NAME).ILike("%"+options.Search+"%"),
-				goqu.C(COLUMN_DESCRIPTION).ILike("%"+options.Search+"%"),
-			)
-		}
-		q = q.Where(searchExpr)
-	}
-
-	if !options.CountOnly {
-		if options.Limit > 0 {
-			q = q.Limit(uint(options.Limit))
-		}
-
-		if options.Offset > 0 {
-			q = q.Offset(uint(options.Offset))
-		}
-
-		sortOrder := "asc"
-		if options.SortOrder != "" {
-			sortOrder = options.SortOrder
-		}
-
-		orderBy := COLUMN_NAME
-		if options.OrderBy != "" {
-			orderBy = options.OrderBy
-		}
-
-		if sortOrder == sb.ASC {
-			q = q.Order(goqu.I(orderBy).Asc())
-		} else {
-			q = q.Order(goqu.I(orderBy).Desc())
-		}
-	}
-
-	return q
 }
 
 // ============================ TERM STORE METHODS ============================
@@ -336,86 +258,117 @@ func (store *storeImplementation) taxonomyQuery(options TaxonomyQueryOptions) *g
 // TermCount returns the total number of terms matching the given query options.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermCount(ctx context.Context, options TermQueryOptions) (int64, error) {
+	if ctx == nil {
+		return 0, errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return -1, errors.New("taxonomy is not enabled")
 	}
-	options.CountOnly = true
-	q := store.termQuery(options)
 
-	sqlStr, params, errSql := q.Prepared(true).
-		Limit(1).
-		Select(goqu.COUNT(goqu.Star()).As("count")).
-		ToSQL()
+	q := store.buildTermQuery(options)
 
-	if errSql != nil {
-		return -1, errSql
+	var count int64
+	err := q.Table(store.termTableName).Count(&count)
+	return count, err
+}
+
+// buildTermQuery builds a neat query from the term query options.
+func (store *storeImplementation) buildTermQuery(options TermQueryOptions) contractsorm.Query {
+	q := store.db.Query()
+
+	if options.ID != "" {
+		q = q.Where(COLUMN_ID+" = ?", options.ID)
 	}
 
-	if store.debugEnabled {
-		log.Println(sqlStr)
+	if len(options.IDIn) > 0 {
+		// Build IN clause manually for neat compatibility
+		inClause := COLUMN_ID + " IN ("
+		placeholders := make([]interface{}, 0, len(options.IDIn))
+		for i, id := range options.IDIn {
+			if i > 0 {
+				inClause += ", "
+			}
+			inClause += "?"
+			placeholders = append(placeholders, id)
+		}
+		inClause += ")"
+		q = q.Where(inClause, placeholders...)
 	}
 
-	mapped, err := database.SelectToMapString(
-		database.NewQueryableContext(ctx, store.db),
-		sqlStr,
-		params...,
-	)
-
-	if err != nil {
-		return -1, err
+	if options.TaxonomyID != "" {
+		q = q.Where(COLUMN_TAXONOMY_ID+" = ?", options.TaxonomyID)
 	}
 
-	if len(mapped) < 1 {
-		return -1, nil
+	if options.ParentID != "" {
+		q = q.Where(COLUMN_PARENT_ID+" = ?", options.ParentID)
 	}
 
-	countStr := mapped[0]["count"]
-	i, err := strconv.ParseInt(countStr, 10, 64)
-	if err != nil {
-		return -1, err
+	if options.Slug != "" {
+		q = q.Where(COLUMN_SLUG+" = ?", options.Slug)
 	}
 
-	return i, nil
+	if options.Limit > 0 {
+		q = q.Limit(options.Limit)
+	}
+
+	if options.Offset > 0 {
+		q = q.Offset(options.Offset)
+	}
+
+	return q
 }
 
 // TermCreate inserts a new term into the database.
 // Sets the created_at and updated_at timestamps automatically.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermCreate(ctx context.Context, term TermInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
-	term.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
-
-	data := term.GetData()
-
-	sqlStr, sqlParams, errSql := goqu.Dialect(store.dbDriverName).
-		Insert(store.termTableName).
-		Prepared(true).
-		Rows(data).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
+	if term == nil {
+		return errors.New("term is nil")
 	}
 
-	if store.debugEnabled {
-		log.Println(sqlStr)
+	if term.GetID() == "" {
+		term.SetID(GenerateShortID())
 	}
 
-	_, err := store.db.ExecContext(ctx, sqlStr, sqlParams...)
+	if term.GetCreatedAt() == "" {
+		term.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	}
+	if term.GetUpdatedAt() == "" {
+		term.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
+	}
 
+	db, err := store.db.DB()
 	if err != nil {
 		return err
 	}
+	_, err = db.ExecContext(ctx, "INSERT INTO "+store.termTableName+" (id, taxonomy_id, parent_id, sequence, name, slug, description, count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		term.GetID(),
+		term.GetTaxonomyID(),
+		term.GetParentID(),
+		term.GetSequence(),
+		term.GetName(),
+		term.GetSlug(),
+		term.GetDescription(),
+		term.GetCount(),
+		term.GetCreatedAtCarbon().StdTime(),
+		term.GetUpdatedAtCarbon().StdTime(),
+	)
 
-	term.MarkAsNotDirty()
-	return nil
+	return err
 }
 
 // TermDelete permanently removes a term from the database.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermDelete(ctx context.Context, term TermInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -436,22 +389,10 @@ func (store *storeImplementation) TermDeleteByID(ctx context.Context, id string)
 		return errors.New("term id is empty")
 	}
 
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Delete(store.termTableName).
-		Where(goqu.C(COLUMN_ID).Eq(id)).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, params...)
-
+	_, err := store.db.Query().
+		Table(store.termTableName).
+		Where(COLUMN_ID+" = ?", id).
+		Delete()
 	return err
 }
 
@@ -501,7 +442,7 @@ func (store *storeImplementation) TermFindBySlug(ctx context.Context, taxonomySl
 
 	list, err := store.TermList(ctx, TermQueryOptions{
 		TaxonomyID: taxonomy.GetID(),
-		Search:     termSlug,
+		Slug:       termSlug,
 		Limit:      1,
 	})
 
@@ -509,11 +450,8 @@ func (store *storeImplementation) TermFindBySlug(ctx context.Context, taxonomySl
 		return nil, err
 	}
 
-	// Filter by exact slug match
-	for _, term := range list {
-		if term.GetSlug() == termSlug {
-			return term, nil
-		}
+	if len(list) > 0 {
+		return list[0], nil
 	}
 
 	return nil, nil
@@ -525,36 +463,47 @@ func (store *storeImplementation) TermList(ctx context.Context, options TermQuer
 	if !store.taxonomyEnabled {
 		return []TermInterface{}, errors.New("taxonomy is not enabled")
 	}
-	q := store.termQuery(options)
-
-	sqlStr, sqlParams, errSql := q.Select().
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		log.Println(errSql)
-		return []TermInterface{}, errSql
+	if ctx == nil {
+		return nil, errors.New("ctx is nil")
 	}
 
-	if store.debugEnabled {
-		log.Println(sqlStr)
+	type termRow struct {
+		ID          string    `db:"id"`
+		TaxonomyID  string    `db:"taxonomy_id"`
+		ParentID    string    `db:"parent_id"`
+		Sequence    int       `db:"sequence"`
+		Name        string    `db:"name"`
+		Slug        string    `db:"slug"`
+		Description string    `db:"description"`
+		Count       int       `db:"count"`
+		CreatedAt   time.Time `db:"created_at"`
+		UpdatedAt   time.Time `db:"updated_at"`
 	}
 
-	modelMaps, err := database.SelectToMapString(
-		database.NewQueryableContext(ctx, store.db),
-		sqlStr,
-		sqlParams...,
-	)
-	if err != nil {
+	q := store.buildTermQuery(options)
+
+	var rows []termRow
+	if err := q.Table(store.termTableName).Get(&rows); err != nil {
 		return []TermInterface{}, err
 	}
 
-	list := []TermInterface{}
-
-	lo.ForEach(modelMaps, func(modelMap map[string]string, index int) {
-		model := NewTermFromExistingData(modelMap)
-		list = append(list, model)
-	})
+	list := make([]TermInterface, 0, len(rows))
+	for _, r := range rows {
+		t := NewTerm()
+		t.SetID(r.ID)
+		t.SetTaxonomyID(r.TaxonomyID)
+		t.SetParentID(r.ParentID)
+		t.SetSequence(r.Sequence)
+		t.SetName(r.Name)
+		t.SetSlug(r.Slug)
+		t.SetDescription(r.Description)
+		t.SetCount(r.Count)
+		if termImpl, ok := t.(*termImplementation); ok {
+			termImpl.CreatedAtField.CreatedAt = r.CreatedAt
+			termImpl.UpdatedAtField.UpdatedAt = r.UpdatedAt
+		}
+		list = append(list, t)
+	}
 
 	return list, nil
 }
@@ -562,6 +511,9 @@ func (store *storeImplementation) TermList(ctx context.Context, options TermQuer
 // TermUpdate updates an existing term in the database.
 // Only changed fields are updated. Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermUpdate(ctx context.Context, term TermInterface) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -569,106 +521,23 @@ func (store *storeImplementation) TermUpdate(ctx context.Context, term TermInter
 		return errors.New("term is nil")
 	}
 
-	dataChanged := term.GetDataChanged()
+	term.SetUpdatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 
-	delete(dataChanged, "id")
-
-	if len(dataChanged) < 1 {
-		return nil
-	}
-
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Update(store.termTableName).
-		Set(dataChanged).
-		Where(goqu.C(COLUMN_ID).Eq(term.GetID())).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, params...)
-
-	term.MarkAsNotDirty()
+	_, err := store.db.Query().
+		Table(store.termTableName).
+		Where(COLUMN_ID+" = ?", term.GetID()).
+		Update(map[string]interface{}{
+			COLUMN_TAXONOMY_ID: term.GetTaxonomyID(),
+			COLUMN_PARENT_ID:   term.GetParentID(),
+			COLUMN_SEQUENCE:    term.GetSequence(),
+			COLUMN_NAME:        term.GetName(),
+			COLUMN_SLUG:        term.GetSlug(),
+			COLUMN_DESCRIPTION: term.GetDescription(),
+			COLUMN_COUNT:       term.GetCount(),
+			COLUMN_UPDATED_AT:  term.GetUpdatedAtCarbon().StdTime(),
+		})
 
 	return err
-}
-
-// termQuery builds a goqu SelectDataset for querying terms based on options.
-func (store *storeImplementation) termQuery(options TermQueryOptions) *goqu.SelectDataset {
-	q := goqu.Dialect(store.dbDriverName).
-		From(store.termTableName)
-
-	if options.ID != "" {
-		q = q.Where(goqu.C(COLUMN_ID).Eq(options.ID))
-	}
-
-	if len(options.IDIn) > 0 {
-		q = q.Where(goqu.C(COLUMN_ID).In(options.IDIn))
-	}
-
-	if options.TaxonomyID != "" {
-		q = q.Where(goqu.C(COLUMN_TAXONOMY_ID).Eq(options.TaxonomyID))
-	}
-
-	if options.ParentID != "" {
-		q = q.Where(goqu.C(COLUMN_PARENT_ID).Eq(options.ParentID))
-	}
-
-	if options.Search != "" {
-		var searchExpr goqu.Expression
-		switch store.dbDriverName {
-		case "sqlite3", "sqlite":
-			// SQLite: use LOWER() for case-insensitive matching
-			searchPattern := "%" + options.Search + "%"
-			searchExpr = goqu.Or(
-				goqu.L("LOWER(?)", goqu.C(COLUMN_NAME)).Like(goqu.L("LOWER(?)", searchPattern)),
-				goqu.L("LOWER(?)", goqu.C(COLUMN_DESCRIPTION)).Like(goqu.L("LOWER(?)", searchPattern)),
-				goqu.C(COLUMN_SLUG).Eq(options.Search),
-			)
-		default:
-			// PostgreSQL, MySQL: use ILike
-			searchExpr = goqu.Or(
-				goqu.C(COLUMN_NAME).ILike("%"+options.Search+"%"),
-				goqu.C(COLUMN_DESCRIPTION).ILike("%"+options.Search+"%"),
-				goqu.C(COLUMN_SLUG).Eq(options.Search),
-			)
-		}
-		q = q.Where(searchExpr)
-	}
-
-	if !options.CountOnly {
-		if options.Limit > 0 {
-			q = q.Limit(uint(options.Limit))
-		}
-
-		if options.Offset > 0 {
-			q = q.Offset(uint(options.Offset))
-		}
-
-		sortOrder := "asc"
-		if options.SortOrder != "" {
-			sortOrder = options.SortOrder
-		}
-
-		orderBy := COLUMN_NAME
-		if options.OrderBy != "" {
-			orderBy = options.OrderBy
-		}
-
-		if sortOrder == sb.ASC {
-			q = q.Order(goqu.I(orderBy).Asc())
-		} else {
-			q = q.Order(goqu.I(orderBy).Desc())
-		}
-	}
-
-	return q
 }
 
 // ============================ POST-TERM RELATIONSHIP METHODS ============================
@@ -677,6 +546,9 @@ func (store *storeImplementation) termQuery(options TermQueryOptions) *goqu.Sele
 // Also increments the term's count. Duplicate key errors are ignored.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) PostInsertTermAt(ctx context.Context, postID string, termID string, sequence int) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -684,44 +556,38 @@ func (store *storeImplementation) PostInsertTermAt(ctx context.Context, postID s
 		return errors.New("post id and term id are required")
 	}
 
-	relation := NewTermRelation()
-	relation.SetPostID(postID).
-		SetTermID(termID).
-		SetSequence(sequence)
+	relationID := GenerateShortID()
+	now := carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)
 
-	data := relation.GetData()
-
-	sqlStr, sqlParams, errSql := goqu.Dialect(store.dbDriverName).
-		Insert(store.termRelationTableName).
-		Prepared(true).
-		Rows(data).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, sqlParams...)
+	db, err := store.db.DB()
 	if err != nil {
-		// Ignore duplicate key errors
-		if isDuplicateKeyError(err) {
-			return nil
-		}
+		return err
+	}
+	_, err = db.ExecContext(ctx, "INSERT INTO "+store.termRelationTableName+" (id, post_id, term_id, sequence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+		relationID,
+		postID,
+		termID,
+		sequence,
+		now,
+		now,
+	)
+
+	if err != nil {
 		return err
 	}
 
 	// Increment term count
-	return store.TermIncrementCount(ctx, termID)
+	_, err = db.ExecContext(ctx, "UPDATE "+store.termTableName+" SET count = count + 1 WHERE id = ?", termID)
+	return err
 }
 
 // PostAddTerm appends a term to a post at the end of the sequence.
 // Automatically calculates the next available sequence number.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) PostAddTerm(ctx context.Context, postID string, termID string) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -729,62 +595,33 @@ func (store *storeImplementation) PostAddTerm(ctx context.Context, postID string
 		return errors.New("post id and term id are required")
 	}
 
-	// Get the current max sequence for this post
-	maxSequence, err := store.postMaxSequence(ctx, postID)
+	maxSeq, err := store.postMaxSequence(ctx, postID)
 	if err != nil {
 		return err
 	}
 
-	// Insert at the next available sequence
-	return store.PostInsertTermAt(ctx, postID, termID, maxSequence+1)
+	return store.PostInsertTermAt(ctx, postID, termID, maxSeq+1)
 }
 
 // postMaxSequence returns the maximum sequence number for terms associated with a post.
 // Returns 0 if no terms are associated with the post.
 func (store *storeImplementation) postMaxSequence(ctx context.Context, postID string) (int, error) {
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Select(goqu.MAX(COLUMN_SEQUENCE)).
-		From(store.termRelationTableName).
-		Where(goqu.C(COLUMN_POST_ID).Eq(postID)).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return 0, errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	var maxSeq interface{}
-	err := store.db.QueryRowContext(ctx, sqlStr, params...).Scan(&maxSeq)
+	db, err := store.db.DB()
 	if err != nil {
 		return 0, err
 	}
-
-	if maxSeq == nil {
-		return 0, nil
-	}
-
-	switch v := maxSeq.(type) {
-	case int64:
-		return int(v), nil
-	case int32:
-		return int(v), nil
-	case int:
-		return v, nil
-	case float64:
-		return int(v), nil
-	default:
-		return 0, nil
-	}
+	var maxSeq int
+	err = db.QueryRowContext(ctx, "SELECT COALESCE(MAX(sequence), 0) FROM "+store.termRelationTableName+" WHERE post_id = ?", postID).Scan(&maxSeq)
+	return maxSeq, err
 }
 
 // PostMoveTermTo moves a term to a specific sequence position on a post.
 // Reorders existing terms by fetching all, reordering in memory, and updating one by one.
 // Returns an error if the term is not associated with the post.
 func (store *storeImplementation) PostMoveTermTo(ctx context.Context, postID string, termID string, sequence int) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -795,70 +632,45 @@ func (store *storeImplementation) PostMoveTermTo(ctx context.Context, postID str
 		return errors.New("sequence must be non-negative")
 	}
 
-	// Fetch all term relations for this post
 	relations, err := store.postTermList(ctx, postID)
 	if err != nil {
 		return err
 	}
 
-	// Find the term to move and its current position
-	var movingTerm TermRelationInterface
-	otherTerms := make([]TermRelationInterface, 0, len(relations))
-
-	for _, rel := range relations {
+	// Find the term relation
+	var targetRelation TermRelationInterface
+	var targetIndex int
+	for i, rel := range relations {
 		if rel.GetTermID() == termID {
-			movingTerm = rel
-		} else {
-			otherTerms = append(otherTerms, rel)
+			targetRelation = rel
+			targetIndex = i
+			break
 		}
 	}
 
-	if movingTerm == nil {
-		return errors.New("term is not associated with this post")
+	if targetRelation == nil {
+		return errors.New("term not associated with post")
 	}
 
-	// If already at the target position, nothing to do
-	if movingTerm.GetSequence() == sequence {
-		return nil
+	// Remove from current position
+	relations = append(relations[:targetIndex], relations[targetIndex+1:]...)
+
+	// Convert 1-based sequence to 0-based for slice operations
+	zeroBasedIndex := sequence - 1
+	if zeroBasedIndex < 0 {
+		zeroBasedIndex = 0
 	}
 
-	// Sort other terms by sequence (bubble sort for simplicity)
-	for i := 0; i < len(otherTerms); i++ {
-		for j := i + 1; j < len(otherTerms); j++ {
-			if otherTerms[i].GetSequence() > otherTerms[j].GetSequence() {
-				otherTerms[i], otherTerms[j] = otherTerms[j], otherTerms[i]
-			}
-		}
+	// Insert at new position
+	if zeroBasedIndex >= len(relations) {
+		relations = append(relations, targetRelation)
+	} else {
+		relations = append(relations[:zeroBasedIndex], append([]TermRelationInterface{targetRelation}, relations[zeroBasedIndex:]...)...)
 	}
 
-	// Build new order: insert the moving term at the target sequence
-	newOrder := make([]TermRelationInterface, 0, len(relations))
-	currentSeq := 1
-
-	for _, term := range otherTerms {
-		// Skip the target position for the moving term
-		if currentSeq == sequence {
-			movingTerm.SetSequence(sequence)
-			newOrder = append(newOrder, movingTerm)
-			currentSeq++
-		}
-		// Skip the old position of the moving term
-		if term.GetTermID() != termID {
-			term.SetSequence(currentSeq)
-			newOrder = append(newOrder, term)
-			currentSeq++
-		}
-	}
-
-	// If target sequence is beyond current max, append at the end
-	if sequence >= currentSeq {
-		movingTerm.SetSequence(currentSeq)
-		newOrder = append(newOrder, movingTerm)
-	}
-
-	// Update all terms with their new sequences
-	for _, term := range newOrder {
-		if err := store.postTermUpdateSequence(ctx, postID, term.GetTermID(), term.GetSequence()); err != nil {
+	// Update all sequences (1-based indexing)
+	for i, rel := range relations {
+		if err := store.postTermUpdateSequence(ctx, postID, rel.GetTermID(), i+1); err != nil {
 			return err
 		}
 	}
@@ -868,66 +680,63 @@ func (store *storeImplementation) PostMoveTermTo(ctx context.Context, postID str
 
 // postTermList returns all term relations for a post.
 func (store *storeImplementation) postTermList(ctx context.Context, postID string) ([]TermRelationInterface, error) {
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Select(COLUMN_TERM_ID, COLUMN_SEQUENCE).
-		From(store.termRelationTableName).
-		Where(goqu.C(COLUMN_POST_ID).Eq(postID)).
-		Order(goqu.C(COLUMN_SEQUENCE).Asc()).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return nil, errSql
+	type termRelationRow struct {
+		ID        string    `db:"id"`
+		PostID    string    `db:"post_id"`
+		TermID    string    `db:"term_id"`
+		Sequence  int       `db:"sequence"`
+		CreatedAt time.Time `db:"created_at"`
+		UpdatedAt time.Time `db:"updated_at"`
 	}
 
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	rows, err := store.db.QueryContext(ctx, sqlStr, params...)
+	db, err := store.db.DB()
 	if err != nil {
-		return nil, err
+		return []TermRelationInterface{}, err
+	}
+	rows, err := db.QueryContext(ctx, "SELECT id, post_id, term_id, sequence, created_at, updated_at FROM "+store.termRelationTableName+" WHERE post_id = ? ORDER BY sequence ASC", postID)
+	if err != nil {
+		return []TermRelationInterface{}, err
 	}
 	defer rows.Close()
 
-	var relations []TermRelationInterface
+	var rowList []termRelationRow
 	for rows.Next() {
-		var termID string
-		var sequence int
-		if err := rows.Scan(&termID, &sequence); err != nil {
-			return nil, err
+		var r termRelationRow
+		if err := rows.Scan(&r.ID, &r.PostID, &r.TermID, &r.Sequence, &r.CreatedAt, &r.UpdatedAt); err != nil {
+			return []TermRelationInterface{}, err
 		}
-		rel := NewTermRelation().SetPostID(postID).SetTermID(termID).SetSequence(sequence)
-		relations = append(relations, rel)
+		rowList = append(rowList, r)
+	}
+	if err := rows.Err(); err != nil {
+		return []TermRelationInterface{}, err
 	}
 
-	return relations, rows.Err()
+	list := make([]TermRelationInterface, 0, len(rowList))
+	for _, r := range rowList {
+		tr := NewTermRelation()
+		tr.SetID(r.ID)
+		tr.SetPostID(r.PostID)
+		tr.SetTermID(r.TermID)
+		tr.SetSequence(r.Sequence)
+		if trImpl, ok := tr.(*termRelationImplementation); ok {
+			trImpl.CreatedAtField.CreatedAt = r.CreatedAt
+			trImpl.UpdatedAtField.UpdatedAt = r.UpdatedAt
+		}
+		list = append(list, tr)
+	}
+
+	return list, nil
 }
 
 // postTermUpdateSequence updates the sequence of a specific term relation.
 func (store *storeImplementation) postTermUpdateSequence(ctx context.Context, postID, termID string, sequence int) error {
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Update(store.termRelationTableName).
-		Set(goqu.Record{
+	_, err := store.db.Query().
+		Table(store.termRelationTableName).
+		Where(COLUMN_POST_ID+" = ? AND "+COLUMN_TERM_ID+" = ?", postID, termID).
+		Update(map[string]interface{}{
 			COLUMN_SEQUENCE:   sequence,
-			COLUMN_UPDATED_AT: carbon.Now(carbon.UTC).ToDateTimeString(),
-		}).
-		Where(
-			goqu.C(COLUMN_POST_ID).Eq(postID),
-			goqu.C(COLUMN_TERM_ID).Eq(termID),
-		).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, params...)
+			COLUMN_UPDATED_AT: carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC),
+		})
 	return err
 }
 
@@ -935,6 +744,9 @@ func (store *storeImplementation) postTermUpdateSequence(ctx context.Context, po
 // Also decrements the term's count.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) PostRemoveTerm(ctx context.Context, postID string, termID string) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -942,30 +754,21 @@ func (store *storeImplementation) PostRemoveTerm(ctx context.Context, postID str
 		return errors.New("post id and term id are required")
 	}
 
-	sqlStr, params, errSql := goqu.Dialect(store.dbDriverName).
-		Delete(store.termRelationTableName).
-		Where(
-			goqu.C(COLUMN_POST_ID).Eq(postID),
-			goqu.C(COLUMN_TERM_ID).Eq(termID),
-		).
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, params...)
+	_, err := store.db.Query().
+		Table(store.termRelationTableName).
+		Where(COLUMN_POST_ID+" = ? AND "+COLUMN_TERM_ID+" = ?", postID, termID).
+		Delete()
 	if err != nil {
 		return err
 	}
 
 	// Decrement term count
-	return store.TermDecrementCount(ctx, termID)
+	db, err := store.db.DB()
+	if err != nil {
+		return err
+	}
+	_, err = db.ExecContext(ctx, "UPDATE "+store.termTableName+" SET count = CASE WHEN count > 0 THEN count - 1 ELSE 0 END WHERE id = ?", termID)
+	return err
 }
 
 // TermListByPostID retrieves all terms associated with a specific post.
@@ -979,22 +782,20 @@ func (store *storeImplementation) TermListByPostID(ctx context.Context, postID s
 		return []TermInterface{}, errors.New("post id is required")
 	}
 
-	// Get all term relations for this post
-	relations, err := store.termRelationList(ctx, TermRelationQueryOptions{PostID: postID})
+	relations, err := store.postTermList(ctx, postID)
 	if err != nil {
 		return []TermInterface{}, err
 	}
 
-	if len(relations) == 0 {
+	termIDs := make([]string, 0, len(relations))
+	for _, rel := range relations {
+		termIDs = append(termIDs, rel.GetTermID())
+	}
+
+	if len(termIDs) == 0 {
 		return []TermInterface{}, nil
 	}
 
-	// Get term IDs
-	termIDs := lo.Map(relations, func(r TermRelationInterface, _ int) string {
-		return r.GetTermID()
-	})
-
-	// Get terms
 	terms, err := store.TermList(ctx, TermQueryOptions{
 		IDIn: termIDs,
 	})
@@ -1012,9 +813,13 @@ func (store *storeImplementation) TermListByPostID(ctx context.Context, postID s
 			return []TermInterface{}, nil
 		}
 
-		terms = lo.Filter(terms, func(t TermInterface, _ int) bool {
-			return t.GetTaxonomyID() == taxonomy.GetID()
-		})
+		filtered := make([]TermInterface, 0)
+		for _, term := range terms {
+			if term.GetTaxonomyID() == taxonomy.GetID() {
+				filtered = append(filtered, term)
+			}
+		}
+		return filtered, nil
 	}
 
 	return terms, nil
@@ -1023,6 +828,9 @@ func (store *storeImplementation) TermListByPostID(ctx context.Context, postID s
 // PostListByTermID retrieves all posts associated with a specific term.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) PostListByTermID(ctx context.Context, termID string, options PostQueryOptions) ([]PostInterface, error) {
+	if ctx == nil {
+		return []PostInterface{}, errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return []PostInterface{}, errors.New("taxonomy is not enabled")
 	}
@@ -1030,22 +838,29 @@ func (store *storeImplementation) PostListByTermID(ctx context.Context, termID s
 		return []PostInterface{}, errors.New("term id is required")
 	}
 
-	// Get all term relations for this term
-	relations, err := store.termRelationList(ctx, TermRelationQueryOptions{TermID: termID})
+	db, err := store.db.DB()
 	if err != nil {
 		return []PostInterface{}, err
 	}
+	rows, err := db.QueryContext(ctx, "SELECT post_id FROM "+store.termRelationTableName+" WHERE term_id = ?", termID)
+	if err != nil {
+		return []PostInterface{}, err
+	}
+	defer rows.Close()
 
-	if len(relations) == 0 {
+	var postIDs []string
+	for rows.Next() {
+		var postID string
+		if err := rows.Scan(&postID); err != nil {
+			return []PostInterface{}, err
+		}
+		postIDs = append(postIDs, postID)
+	}
+
+	if len(postIDs) == 0 {
 		return []PostInterface{}, nil
 	}
 
-	// Get post IDs
-	postIDs := lo.Map(relations, func(r TermRelationInterface, _ int) string {
-		return r.GetPostID()
-	})
-
-	// Get posts
 	options.IDIn = postIDs
 	return store.PostList(ctx, options)
 }
@@ -1054,6 +869,9 @@ func (store *storeImplementation) PostListByTermID(ctx context.Context, termID s
 // Removes any existing terms not in the provided list and adds new ones.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) PostSetTerms(ctx context.Context, postID string, taxonomySlug string, termIDs []string) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -1061,108 +879,51 @@ func (store *storeImplementation) PostSetTerms(ctx context.Context, postID strin
 		return errors.New("post id is required")
 	}
 
-	// Get taxonomy
-	var taxonomyID string
-	if taxonomySlug != "" {
-		taxonomy, err := store.TaxonomyFindBySlug(ctx, taxonomySlug)
-		if err != nil {
-			return err
-		}
-		if taxonomy == nil {
-			return errors.New("taxonomy not found: " + taxonomySlug)
-		}
-		taxonomyID = taxonomy.GetID()
+	taxonomy, err := store.TaxonomyFindBySlug(ctx, taxonomySlug)
+	if err != nil {
+		return err
+	}
+	if taxonomy == nil {
+		return errors.New("taxonomy not found")
 	}
 
-	// Get current term relations for this post and taxonomy
+	// Get current terms for this post and taxonomy
 	currentTerms, err := store.TermListByPostID(ctx, postID, taxonomySlug)
 	if err != nil {
 		return err
 	}
 
+	// Build map of current term IDs
+	currentTermIDs := make(map[string]bool)
+	for _, term := range currentTerms {
+		currentTermIDs[term.GetID()] = true
+	}
+
+	// Build map of new term IDs
+	newTermIDs := make(map[string]bool)
+	for _, termID := range termIDs {
+		newTermIDs[termID] = true
+	}
+
 	// Remove terms that are no longer in the list
-	for _, currentTerm := range currentTerms {
-		found := false
-		for _, newTermID := range termIDs {
-			if currentTerm.GetID() == newTermID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			if err := store.PostRemoveTerm(ctx, postID, currentTerm.GetID()); err != nil {
+	for _, term := range currentTerms {
+		if !newTermIDs[term.GetID()] {
+			if err := store.PostRemoveTerm(ctx, postID, term.GetID()); err != nil {
 				return err
 			}
 		}
 	}
 
 	// Add new terms
-	for i, termID := range termIDs {
-		if termID == "" {
-			continue
-		}
-
-		// Verify term exists and belongs to the taxonomy
-		if taxonomyID != "" {
-			term, err := store.TermFindByID(ctx, termID)
-			if err != nil {
+	for _, termID := range termIDs {
+		if !currentTermIDs[termID] {
+			if err := store.PostAddTerm(ctx, postID, termID); err != nil {
 				return err
 			}
-			if term == nil || term.GetTaxonomyID() != taxonomyID {
-				continue
-			}
-		}
-
-		if err := store.PostInsertTermAt(ctx, postID, termID, i); err != nil {
-			return err
 		}
 	}
 
 	return nil
-}
-
-// termRelationList retrieves term relations based on query options.
-func (store *storeImplementation) termRelationList(ctx context.Context, options TermRelationQueryOptions) ([]TermRelationInterface, error) {
-	q := goqu.Dialect(store.dbDriverName).
-		From(store.termRelationTableName)
-
-	if options.PostID != "" {
-		q = q.Where(goqu.C(COLUMN_POST_ID).Eq(options.PostID))
-	}
-
-	if options.TermID != "" {
-		q = q.Where(goqu.C(COLUMN_TERM_ID).Eq(options.TermID))
-	}
-
-	sqlStr, sqlParams, errSql := q.Select().
-		Prepared(true).
-		ToSQL()
-
-	if errSql != nil {
-		return []TermRelationInterface{}, errSql
-	}
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
-	}
-
-	modelMaps, err := database.SelectToMapString(
-		database.NewQueryableContext(ctx, store.db),
-		sqlStr,
-		sqlParams...,
-	)
-	if err != nil {
-		return []TermRelationInterface{}, err
-	}
-
-	list := []TermRelationInterface{}
-
-	lo.ForEach(modelMaps, func(modelMap map[string]string, index int) {
-		model := NewTermRelationFromExistingData(modelMap)
-		list = append(list, model)
-	})
-
-	return list, nil
 }
 
 // ============================ UTILITY METHODS ============================
@@ -1170,6 +931,9 @@ func (store *storeImplementation) termRelationList(ctx context.Context, options 
 // TermIncrementCount increments the count of posts associated with a term.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermIncrementCount(ctx context.Context, termID string) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -1177,13 +941,11 @@ func (store *storeImplementation) TermIncrementCount(ctx context.Context, termID
 		return errors.New("term id is required")
 	}
 
-	sqlStr := "UPDATE " + store.termTableName + " SET " + COLUMN_COUNT + " = " + COLUMN_COUNT + " + 1 WHERE " + COLUMN_ID + " = ?"
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
+	db, err := store.db.DB()
+	if err != nil {
+		return err
 	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, termID)
+	_, err = db.ExecContext(ctx, "UPDATE "+store.termTableName+" SET count = count + 1 WHERE id = ?", termID)
 	return err
 }
 
@@ -1191,6 +953,9 @@ func (store *storeImplementation) TermIncrementCount(ctx context.Context, termID
 // The count will not go below zero.
 // Returns an error if taxonomy features are not enabled.
 func (store *storeImplementation) TermDecrementCount(ctx context.Context, termID string) error {
+	if ctx == nil {
+		return errors.New("ctx is nil")
+	}
 	if !store.taxonomyEnabled {
 		return errors.New("taxonomy is not enabled")
 	}
@@ -1198,44 +963,10 @@ func (store *storeImplementation) TermDecrementCount(ctx context.Context, termID
 		return errors.New("term id is required")
 	}
 
-	sqlStr := "UPDATE " + store.termTableName + " SET " + COLUMN_COUNT + " = MAX(0, " + COLUMN_COUNT + " - 1) WHERE " + COLUMN_ID + " = ?"
-
-	if store.debugEnabled {
-		log.Println(sqlStr)
+	db, err := store.db.DB()
+	if err != nil {
+		return err
 	}
-
-	_, err := store.db.ExecContext(ctx, sqlStr, termID)
+	_, err = db.ExecContext(ctx, "UPDATE "+store.termTableName+" SET count = CASE WHEN count > 0 THEN count - 1 ELSE 0 END WHERE id = ?", termID)
 	return err
-}
-
-// isDuplicateKeyError checks if the error is a duplicate key/unique constraint violation.
-// It supports SQLite, MySQL, and PostgreSQL error patterns.
-func isDuplicateKeyError(err error) bool {
-	if err == nil {
-		return false
-	}
-	errStr := err.Error()
-	// Check for common duplicate key error patterns
-	return contains(errStr, "duplicate") ||
-		contains(errStr, "UNIQUE constraint failed") ||
-		contains(errStr, "1062") || // MySQL duplicate entry
-		contains(errStr, "23505") // PostgreSQL unique violation
-}
-
-// contains checks if string s contains the substring substr.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr, 0))
-}
-
-// containsAt checks if string s contains the substring substr starting at position start.
-func containsAt(s, substr string, start int) bool {
-	if start+len(substr) > len(s) {
-		return false
-	}
-	for i := 0; i < len(substr); i++ {
-		if s[start+i] != substr[i] {
-			return containsAt(s, substr, start+1)
-		}
-	}
-	return true
 }

@@ -21,6 +21,9 @@ const POST_CONTENT_TYPE_BLOCKS = "blocks"
 
 const VERSIONING_TYPE_POST = "post"
 
+const NULL_DATETIME = "0000-00-00 00:00:00"
+const MAX_DATETIME = "9999-12-31 23:59:59"
+
 const COLUMN_AUTHOR_ID = "author_id"
 const COLUMN_CANONICAL_URL = "canonical_url"
 const COLUMN_CONTENT = "content"

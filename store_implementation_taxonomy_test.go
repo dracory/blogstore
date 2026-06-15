@@ -465,7 +465,7 @@ func TestStorePostListByTermID(t *testing.T) {
 	}
 
 	// Add term to post1 and post2
-	if err := store.PostInsertTermAt(ctx, post1.GetID(), term.GetID(), 0); err != nil {
+	if err := store.PostInsertTermAt(ctx, post1.GetID(), term.GetID(), 1); err != nil {
 		t.Fatalf("PostInsertTermAt() error = %v, want nil", err)
 	}
 	if err := store.PostInsertTermAt(ctx, post2.GetID(), term.GetID(), 1); err != nil {
@@ -648,7 +648,8 @@ func getPostTermSequences(t *testing.T, ctx context.Context, store StoreInterfac
 
 	// Use the store's db directly to query term relations
 	sqlStr := "SELECT term_id, sequence FROM " + store.(*storeImplementation).termRelationTableName + " WHERE post_id = ? ORDER BY sequence"
-	rows, err := store.(*storeImplementation).db.QueryContext(ctx, sqlStr, postID)
+	db, _ := store.(*storeImplementation).db.DB()
+	rows, err := db.QueryContext(ctx, sqlStr, postID)
 	if err != nil {
 		t.Fatalf("Failed to query term sequences: %v", err)
 	}
