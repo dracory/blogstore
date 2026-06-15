@@ -755,7 +755,7 @@ func TestVersioningSoftDeleteByID(t *testing.T) {
 
 	// But record should exist with soft deleted included
 	list, err := s.VersioningList(ctx, NewVersioningQuery().
-		SetEntityID(versionID).
+		SetID(versionID).
 		SetSoftDeletedIncluded(true))
 	if err != nil {
 		t.Fatal("unexpected error:", err)
