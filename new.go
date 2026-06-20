@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/dracory/neat"
-	"github.com/dracory/versionstore"
 )
 
 // NewStoreOptions defines the configuration options for creating a new blog store.
@@ -59,23 +58,6 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 		return nil, errors.New("blog store: VersioningTableName is required")
 	}
 
-	var versionStore versionstore.StoreInterface
-	if opts.VersioningEnabled {
-		vs, err := versionstore.NewStore(versionstore.NewStoreOptions{
-			TableName:          opts.VersioningTableName,
-			DB:                 opts.DB,
-			AutomigrateEnabled: opts.AutomigrateEnabled,
-			DebugEnabled:       opts.DebugEnabled,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if vs == nil {
-			return nil, errors.New("blog store: version store is nil")
-		}
-		versionStore = vs
-	}
-
 	store := &storeImplementation{
 		postTableName:         opts.PostTableName,
 		taxonomyTableName:     opts.TaxonomyTableName,
@@ -85,7 +67,7 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 		db:                    neatDB,
 		debugEnabled:          opts.DebugEnabled,
 		versioningEnabled:     opts.VersioningEnabled,
-		versioningStore:       versionStore,
+		versioningTableName:   opts.VersioningTableName,
 		taxonomyEnabled:       opts.TaxonomyEnabled,
 	}
 

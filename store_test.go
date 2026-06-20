@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dracory/sb"
-	"github.com/dracory/versionstore"
 	_ "modernc.org/sqlite"
 )
 
@@ -55,7 +54,7 @@ func TestStoreVersioningCreateAndList(t *testing.T) {
 	list, err := store.VersioningList(context.Background(), NewVersioningQuery().
 		SetEntityType(VERSIONING_TYPE_POST).
 		SetEntityID(post.GetID()).
-		SetOrderBy(versionstore.COLUMN_CREATED_AT).
+		SetOrderBy(COLUMN_CREATED_AT).
 		SetSortOrder(sb.DESC))
 	if err != nil {
 		t.Fatal("unexpected error:", err)

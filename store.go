@@ -5,14 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/dracory/neat"
-	"github.com/dracory/neat/database/schema/constants"
-	"github.com/dracory/versionstore"
-	"github.com/dromara/carbon/v2"
 	"log"
 	"time"
+
+	"github.com/dracory/neat"
 	contractsorm "github.com/dracory/neat/contracts/database/orm"
 	contractsschema "github.com/dracory/neat/contracts/database/schema"
+	"github.com/dracory/neat/database/schema/constants"
+	"github.com/dromara/carbon/v2"
 )
 
 // StoreInterface defines the complete interface for blog post storage operations,
@@ -223,8 +223,8 @@ type storeImplementation struct {
 	automigrateEnabled    bool
 	debugEnabled          bool
 
-	versioningEnabled bool
-	versioningStore   versionstore.StoreInterface
+	versioningEnabled   bool
+	versioningTableName string
 
 	taxonomyEnabled bool
 }
@@ -350,11 +350,23 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 	}
 
 	if store.versioningEnabled {
-		if store.versioningStore == nil {
-			return errors.New("versioning store is nil")
+		if store.versioningTableName == "" {
+			return errors.New("versioning table name is empty")
 		}
-		if err := store.versioningStore.MigrateUp(ctx, tx...); err != nil {
-			return err
+		if !store.db.Schema().HasTable(store.versioningTableName) {
+			err := store.db.Schema().Create(store.versioningTableName, func(table contractsschema.Blueprint) {
+				table.String(COLUMN_ID, 21)
+				table.Primary(COLUMN_ID)
+				table.String(COLUMN_ENTITY_TYPE, 40)
+				table.String(COLUMN_ENTITY_ID, 40)
+				table.Text(COLUMN_CONTENT)
+				table.DateTime(COLUMN_CREATED_AT)
+				table.DateTime(COLUMN_SOFT_DELETED_AT)
+			})
+			if err != nil {
+				log.Println(err)
+				return err
+			}
 		}
 	}
 
@@ -386,6 +398,16 @@ func (store *storeImplementation) MigrateDown(ctx context.Context, tx ...*sql.Tx
 		// Drop taxonomy table
 		if store.db.Schema().HasTable(store.taxonomyTableName) {
 			err := store.db.Schema().Drop(store.taxonomyTableName)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+		}
+	}
+
+	if store.versioningEnabled {
+		if store.db.Schema().HasTable(store.versioningTableName) {
+			err := store.db.Schema().Drop(store.versioningTableName)
 			if err != nil {
 				log.Println(err)
 				return err

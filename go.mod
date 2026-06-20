@@ -6,7 +6,6 @@ require (
 	github.com/dracory/neat v0.15.0
 	github.com/dracory/sb v0.26.0
 	github.com/dracory/str v0.18.0
-	github.com/dracory/versionstore v1.3.0
 	github.com/dromara/carbon/v2 v2.6.16
 	github.com/samber/lo v1.53.0
 	modernc.org/sqlite v1.52.0

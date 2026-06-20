@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/dracory/sb"
-	"github.com/dracory/versionstore"
 	_ "modernc.org/sqlite"
 )
 
@@ -145,7 +144,7 @@ func TestVersioningCreateIfChanged_VersioningDisabled(t *testing.T) {
 	}
 }
 
-func TestVersioningCreateIfChanged_NilVersioningStore(t *testing.T) {
+func TestVersioningCreateIfChanged_EmptyVersioningTableName(t *testing.T) {
 	db := initDB()
 	defer db.Close()
 	store, err := NewStore(NewStoreOptions{
@@ -164,14 +163,14 @@ func TestVersioningCreateIfChanged_NilVersioningStore(t *testing.T) {
 		t.Fatal("store is not *storeImplementation")
 	}
 
-	s.versioningStore = nil
+	s.versioningTableName = ""
 
 	ctx := context.Background()
 	err = s.versioningCreateIfChanged(ctx, VERSIONING_TYPE_POST, "post-123", "content")
 	if err == nil {
 		t.Error("expected error, got nil")
-	} else if !strings.Contains(err.Error(), "blogstore: versioning store is nil") {
-		t.Errorf("expected error to contain 'blogstore: versioning store is nil', got %q", err.Error())
+	} else if !strings.Contains(err.Error(), "blogstore: versioning table name is empty") {
+		t.Errorf("expected error to contain 'blogstore: versioning table name is empty', got %q", err.Error())
 	}
 }
 
@@ -321,7 +320,7 @@ func TestVersioningCreateIfChanged_WithChange(t *testing.T) {
 	list, err := s.VersioningList(ctx, NewVersioningQuery().
 		SetEntityType(VERSIONING_TYPE_POST).
 		SetEntityID(entityID).
-		SetOrderBy(versionstore.COLUMN_CREATED_AT).
+		SetOrderBy(COLUMN_CREATED_AT).
 		SetSortOrder(sb.DESC))
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -493,7 +492,7 @@ func TestVersioningCreate_NilStore(t *testing.T) {
 		t.Fatal("store is not *storeImplementation")
 	}
 
-	s.versioningStore = nil
+	s.versioningTableName = ""
 
 	ctx := context.Background()
 	version := NewVersioning().
@@ -578,7 +577,7 @@ func TestVersioningDelete_NilStore(t *testing.T) {
 		t.Fatal("unexpected error:", err)
 	}
 
-	s.versioningStore = nil
+	s.versioningTableName = ""
 
 	err = s.VersioningDelete(ctx, version)
 	if err != nil {
@@ -699,7 +698,7 @@ func TestVersioningSoftDelete_NilStore(t *testing.T) {
 		t.Fatal("unexpected error:", err)
 	}
 
-	s.versioningStore = nil
+	s.versioningTableName = ""
 
 	err = s.VersioningSoftDelete(ctx, version)
 	if err != nil {
@@ -800,7 +799,7 @@ func TestVersioningSoftDeleteByID_NilStore(t *testing.T) {
 	}
 	versionID := version.ID()
 
-	s.versioningStore = nil
+	s.versioningTableName = ""
 
 	err = s.VersioningSoftDeleteByID(ctx, versionID)
 	if err != nil {
@@ -882,7 +881,7 @@ func TestVersioningUpdate_NilStore(t *testing.T) {
 		t.Fatal("unexpected error:", err)
 	}
 
-	s.versioningStore = nil
+	s.versioningTableName = ""
 
 	err = s.VersioningUpdate(ctx, version)
 	if err != nil {
