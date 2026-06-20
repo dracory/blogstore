@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	contractsorm "github.com/dracory/neat/contracts/database/orm"
@@ -132,7 +133,7 @@ func (store *storeImplementation) VersioningCreate(ctx context.Context, version 
 		return errors.New("versioning entity id is empty")
 	}
 	if version.GetCreatedAt() == "" {
-		version.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
+		version.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 	}
 	if version.GetSoftDeletedAt() == "" {
 		version.SetSoftDeletedAt(MAX_DATETIME)
@@ -235,15 +236,14 @@ func (store *storeImplementation) VersioningList(ctx context.Context, query Vers
 
 	list := make([]VersioningInterface, 0, len(rows))
 	for _, r := range rows {
-		v := NewVersioningFromExistingData(nil)
-		if vImpl, ok := v.(*versioningImplementation); ok {
-			vImpl.IDField = r.ID
-			vImpl.EntityTypeField = r.EntityType
-			vImpl.EntityIDField = r.EntityID
-			vImpl.ContentField = r.Content
-			vImpl.CreatedAt = r.CreatedAt
-			vImpl.SoftDeletedAt = r.SoftDeletedAt
+		v := &versioningImplementation{
+			EntityTypeField: r.EntityType,
+			EntityIDField:   r.EntityID,
+			ContentField:    r.Content,
+			CreatedAt:       r.CreatedAt,
 		}
+		v.ShortID.ID = r.ID
+		v.SoftDeletesMaxDate.SoftDeletedAt = r.SoftDeletedAt
 		list = append(list, v)
 	}
 
@@ -312,7 +312,11 @@ func (store *storeImplementation) VersioningUpdate(ctx context.Context, version 
 
 // buildVersioningQuery builds a neat query from the versioning query interface.
 func (store *storeImplementation) buildVersioningQuery(options VersioningQueryInterface) contractsorm.Query {
-	q := store.db.Query()
+	// Use Model() to enable neat's automatic soft delete handling via SoftDeletesMaxDate
+	// Then override the table name since versioningImplementation doesn't implement TableName()
+	// Use Select("*") because versioningImplementation wraps timestamps in named struct fields
+	// (CreatedAt) which neat's column extractor skips
+	q := store.db.Query().Model(&versioningImplementation{}).Select("*")
 
 	if options == nil {
 		return q
@@ -339,17 +343,18 @@ func (store *storeImplementation) buildVersioningQuery(options VersioningQueryIn
 	}
 
 	if options.HasOrderBy() && options.OrderBy() != "" {
-		if options.HasSortOrder() && options.SortOrder() == "asc" {
+		if options.HasSortOrder() && strings.ToLower(options.SortOrder()) == "asc" {
 			q = q.OrderBy(options.OrderBy())
 		} else {
 			q = q.OrderByDesc(options.OrderBy())
 		}
 	}
 
+	// Active records have soft_deleted_at > NOW (soft-deleted have soft_deleted_at <= NOW)
 	if options.HasSoftDeletedIncluded() && options.SoftDeletedIncluded() {
 		q = q.WithSoftDeleted()
 	} else {
-		q = q.Where(COLUMN_SOFT_DELETED_AT+" = ?", carbon.Parse(MAX_DATETIME, carbon.UTC).StdTime())
+		q = q.Where(COLUMN_SOFT_DELETED_AT+" > ?", carbon.Now(carbon.UTC).StdTime())
 	}
 
 	return q

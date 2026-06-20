@@ -899,7 +899,7 @@ func (st *storeImplementation) PostUpdate(ctx context.Context, post PostInterfac
 
 // buildPostQuery builds a neat query from the post query options.
 func (st *storeImplementation) buildPostQuery(options PostQueryOptions) contractsorm.Query {
-	q := st.db.Query()
+	q := st.db.Query().Table(st.postTableName)
 
 	if options.ID != "" {
 		q = q.Where(COLUMN_ID+" = ?", options.ID)
@@ -1000,11 +1000,11 @@ func (st *storeImplementation) buildPostQuery(options PostQueryOptions) contract
 	}
 
 	// Handle soft delete filtering
+	// Active records have soft_deleted_at > NOW (soft-deleted have soft_deleted_at <= NOW)
 	if options.WithDeleted {
 		q = q.WithSoftDeleted()
 	} else {
-		// By default, filter out soft-deleted records
-		q = q.Where(COLUMN_SOFT_DELETED_AT+" = ?", carbon.Parse(MAX_DATETIME, carbon.UTC).StdTime())
+		q = q.Where(COLUMN_SOFT_DELETED_AT+" > ?", carbon.Now(carbon.UTC).StdTime())
 	}
 
 	return q

@@ -3,6 +3,8 @@ package blogstore
 import (
 	"time"
 
+	"github.com/dracory/neat/database/orm"
+	"github.com/dracory/neat/database/soft_delete"
 	"github.com/dromara/carbon/v2"
 )
 
@@ -107,29 +109,30 @@ func NewVersioningFromExistingData(data map[string]string) VersioningInterface {
 
 // versioningImplementation implements VersioningInterface.
 type versioningImplementation struct {
-	IDField         string
-	EntityTypeField string
-	EntityIDField   string
-	ContentField    string
-	CreatedAt       time.Time
-	SoftDeletedAt   time.Time
+	orm.ShortID
+	soft_delete.SoftDeletesMaxDate
+
+	EntityTypeField string    `db:"entity_type"`
+	EntityIDField   string    `db:"entity_id"`
+	ContentField    string    `db:"content"`
+	CreatedAt       time.Time `db:"created_at"`
 }
 
 var _ VersioningInterface = (*versioningImplementation)(nil)
 
 // IsSoftDeleted returns true if the version is soft deleted.
 func (o *versioningImplementation) IsSoftDeleted() bool {
-	return o.SoftDeletedAt.Before(time.Now().UTC())
+	return o.SoftDeletesMaxDate.IsSoftDeleted()
 }
 
 // ID returns the id of the version.
 func (o *versioningImplementation) ID() string {
-	return o.IDField
+	return o.ShortID.ID
 }
 
 // SetID sets the id of the version.
 func (o *versioningImplementation) SetID(id string) VersioningInterface {
-	o.IDField = id
+	o.ShortID.ID = id
 	return o
 }
 
@@ -190,15 +193,15 @@ func (o *versioningImplementation) SetCreatedAt(createdAt string) VersioningInte
 
 // GetSoftDeletedAt returns the soft deleted at time of the version.
 func (o *versioningImplementation) GetSoftDeletedAt() string {
-	if o.SoftDeletedAt.IsZero() {
+	if o.SoftDeletesMaxDate.SoftDeletedAt.IsZero() {
 		return ""
 	}
-	return carbon.CreateFromStdTime(o.SoftDeletedAt).ToDateTimeString()
+	return carbon.CreateFromStdTime(o.SoftDeletesMaxDate.SoftDeletedAt).ToDateTimeString()
 }
 
 // GetSoftDeletedAtCarbon returns the soft deleted at time of the version as a carbon object.
 func (o *versioningImplementation) GetSoftDeletedAtCarbon() *carbon.Carbon {
-	return carbon.CreateFromStdTime(o.SoftDeletedAt)
+	return carbon.CreateFromStdTime(o.SoftDeletesMaxDate.SoftDeletedAt)
 }
 
 // SetSoftDeletedAt sets the soft deleted at time of the version.
@@ -206,6 +209,6 @@ func (o *versioningImplementation) SetSoftDeletedAt(softDeletedAt string) Versio
 	if softDeletedAt == "" {
 		return o
 	}
-	o.SoftDeletedAt = carbon.Parse(softDeletedAt, carbon.UTC).StdTime()
+	o.SoftDeletesMaxDate.SoftDeletedAt = carbon.Parse(softDeletedAt, carbon.UTC).StdTime()
 	return o
 }

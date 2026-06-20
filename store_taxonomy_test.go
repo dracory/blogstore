@@ -479,17 +479,18 @@ func TestStorePostListByTermID(t *testing.T) {
 	}
 	if len(posts) != 2 {
 		t.Errorf("PostListByTermID() len = %d, want %d", len(posts), 2)
+		return
 	}
 
 	// Verify correct posts returned
-	postIDs := []string{posts[0].GetID(), posts[1].GetID()}
-	if !lo.Contains(postIDs, post1.GetID()) {
+	returnedPostIDs := []string{posts[0].GetID(), posts[1].GetID()}
+	if !lo.Contains(returnedPostIDs, post1.GetID()) {
 		t.Errorf("PostListByTermID() should contain post1")
 	}
-	if !lo.Contains(postIDs, post2.GetID()) {
+	if !lo.Contains(returnedPostIDs, post2.GetID()) {
 		t.Errorf("PostListByTermID() should contain post2")
 	}
-	if lo.Contains(postIDs, post3.GetID()) {
+	if lo.Contains(returnedPostIDs, post3.GetID()) {
 		t.Errorf("PostListByTermID() should NOT contain post3")
 	}
 }
