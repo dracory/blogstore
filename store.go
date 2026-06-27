@@ -38,6 +38,11 @@ type StoreInterface interface {
 	// SetTermRelationTableName sets the term relation table name
 	SetTermRelationTableName(tableName string)
 
+	// GetPostFileTableName returns the post file table name
+	GetPostFileTableName() string
+	// SetPostFileTableName sets the post file table name
+	SetPostFileTableName(tableName string)
+
 	// MigrateDown drops the blog store tables
 	MigrateDown(ctx context.Context, tx ...*sql.Tx) error
 	// MigrateUp creates the blog store tables
@@ -207,6 +212,38 @@ type StoreInterface interface {
 
 	// TermDecrementCount decreases the usage count for a term.
 	TermDecrementCount(ctx context.Context, termID string) error
+
+	// Post file methods manage media files attached to posts.
+
+	// PostFileCreate inserts a new post file into the store.
+	PostFileCreate(ctx context.Context, file PostFileInterface) error
+
+	// PostFileCount returns the number of post files matching the query options.
+	PostFileCount(ctx context.Context, options PostFileQueryOptions) (int64, error)
+
+	// PostFileDelete permanently removes a post file from the store.
+	PostFileDelete(ctx context.Context, file PostFileInterface) error
+
+	// PostFileDeleteByID permanently removes a post file by its ID.
+	PostFileDeleteByID(ctx context.Context, id string) error
+
+	// PostFileFindByID retrieves a post file by its unique identifier.
+	PostFileFindByID(ctx context.Context, id string) (PostFileInterface, error)
+
+	// PostFileList retrieves post files matching the provided query options.
+	PostFileList(ctx context.Context, options PostFileQueryOptions) ([]PostFileInterface, error)
+
+	// PostFileListByPostID retrieves all files attached to a specific post.
+	PostFileListByPostID(ctx context.Context, postID string) ([]PostFileInterface, error)
+
+	// PostFileSoftDelete marks a post file as deleted without permanent removal.
+	PostFileSoftDelete(ctx context.Context, file PostFileInterface) error
+
+	// PostFileSoftDeleteByID marks a post file as deleted by its ID.
+	PostFileSoftDeleteByID(ctx context.Context, id string) error
+
+	// PostFileUpdate modifies an existing post file in the store.
+	PostFileUpdate(ctx context.Context, file PostFileInterface) error
 }
 
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
@@ -218,6 +255,7 @@ type storeImplementation struct {
 	taxonomyTableName     string
 	termTableName         string
 	termRelationTableName string
+	postFileTableName     string
 	db                    *neat.Database
 	timeoutSeconds        int64
 	automigrateEnabled    bool
@@ -370,6 +408,30 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 		}
 	}
 
+	// Create post file table if post file table name is set
+	if store.postFileTableName != "" {
+		if !store.db.Schema().HasTable(store.postFileTableName) {
+			err := store.db.Schema().Create(store.postFileTableName, func(table contractsschema.Blueprint) {
+				table.String(COLUMN_ID, 21)
+				table.Primary(COLUMN_ID)
+				table.String(COLUMN_POST_ID, 21)
+				table.String(COLUMN_NAME, 255).Default("")
+				table.LongText(COLUMN_URL).Default("")
+				table.String(COLUMN_FILE_TYPE, 100).Default("")
+				table.String(COLUMN_FILE_SIZE, 50).Default("0")
+				table.String(COLUMN_FILE_EXTENSION, 20).Default("")
+				table.Integer(COLUMN_SEQUENCE).Default(0)
+				table.DateTime(COLUMN_CREATED_AT).GetUseCurrent()
+				table.DateTime(COLUMN_UPDATED_AT).GetUseCurrent()
+				table.DateTime(constants.SoftDeleteAtColumn).Default(constants.MaxSoftDeletedAtDefault)
+			})
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -408,6 +470,17 @@ func (store *storeImplementation) MigrateDown(ctx context.Context, tx ...*sql.Tx
 	if store.versioningEnabled {
 		if store.db.Schema().HasTable(store.versioningTableName) {
 			err := store.db.Schema().Drop(store.versioningTableName)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+		}
+	}
+
+	// Drop post file table
+	if store.postFileTableName != "" {
+		if store.db.Schema().HasTable(store.postFileTableName) {
+			err := store.db.Schema().Drop(store.postFileTableName)
 			if err != nil {
 				log.Println(err)
 				return err
@@ -481,6 +554,16 @@ func (st *storeImplementation) GetTermRelationTableName() string {
 // SetTermRelationTableName sets the term relation table name
 func (st *storeImplementation) SetTermRelationTableName(tableName string) {
 	st.termRelationTableName = tableName
+}
+
+// GetPostFileTableName returns the post file table name
+func (st *storeImplementation) GetPostFileTableName() string {
+	return st.postFileTableName
+}
+
+// SetPostFileTableName sets the post file table name
+func (st *storeImplementation) SetPostFileTableName(tableName string) {
+	st.postFileTableName = tableName
 }
 
 // PostCreate inserts a new post into the database.

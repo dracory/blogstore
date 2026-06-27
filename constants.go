@@ -58,5 +58,11 @@ const COLUMN_SEQUENCE = "sequence"
 const TAXONOMY_CATEGORY = "category"
 const TAXONOMY_TAG = "tag"
 
+// Post file columns
+const COLUMN_URL = "url"
+const COLUMN_FILE_TYPE = "file_type"
+const COLUMN_FILE_SIZE = "file_size"
+const COLUMN_FILE_EXTENSION = "file_extension"
+
 // Meta key names
 const META_KEY_OLD_SLUGS = "_old_slugs"
