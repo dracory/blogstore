@@ -38,10 +38,10 @@ type StoreInterface interface {
 	// SetTermRelationTableName sets the term relation table name
 	SetTermRelationTableName(tableName string)
 
-	// GetPostFileTableName returns the post file table name
-	GetPostFileTableName() string
-	// SetPostFileTableName sets the post file table name
-	SetPostFileTableName(tableName string)
+	// GetMediaTableName returns the media table name
+	GetMediaTableName() string
+	// SetMediaTableName sets the media table name
+	SetMediaTableName(tableName string)
 
 	// MigrateDown drops the blog store tables
 	MigrateDown(ctx context.Context, tx ...*sql.Tx) error
@@ -213,37 +213,37 @@ type StoreInterface interface {
 	// TermDecrementCount decreases the usage count for a term.
 	TermDecrementCount(ctx context.Context, termID string) error
 
-	// Post file methods manage media files attached to posts.
+	// Media methods manage media files attached to any entity.
 
-	// PostFileCreate inserts a new post file into the store.
-	PostFileCreate(ctx context.Context, file PostFileInterface) error
+	// MediaCreate inserts a new media into the store.
+	MediaCreate(ctx context.Context, media MediaInterface) error
 
-	// PostFileCount returns the number of post files matching the query options.
-	PostFileCount(ctx context.Context, options PostFileQueryOptions) (int64, error)
+	// MediaCount returns the number of media matching the query options.
+	MediaCount(ctx context.Context, options MediaQueryOptions) (int64, error)
 
-	// PostFileDelete permanently removes a post file from the store.
-	PostFileDelete(ctx context.Context, file PostFileInterface) error
+	// MediaDelete permanently removes a media from the store.
+	MediaDelete(ctx context.Context, media MediaInterface) error
 
-	// PostFileDeleteByID permanently removes a post file by its ID.
-	PostFileDeleteByID(ctx context.Context, id string) error
+	// MediaDeleteByID permanently removes a media by its ID.
+	MediaDeleteByID(ctx context.Context, id string) error
 
-	// PostFileFindByID retrieves a post file by its unique identifier.
-	PostFileFindByID(ctx context.Context, id string) (PostFileInterface, error)
+	// MediaFindByID retrieves a media by its unique identifier.
+	MediaFindByID(ctx context.Context, id string) (MediaInterface, error)
 
-	// PostFileList retrieves post files matching the provided query options.
-	PostFileList(ctx context.Context, options PostFileQueryOptions) ([]PostFileInterface, error)
+	// MediaList retrieves media matching the provided query options.
+	MediaList(ctx context.Context, options MediaQueryOptions) ([]MediaInterface, error)
 
-	// PostFileListByPostID retrieves all files attached to a specific post.
-	PostFileListByPostID(ctx context.Context, postID string) ([]PostFileInterface, error)
+	// MediaListByEntityID retrieves all media attached to a specific entity.
+	MediaListByEntityID(ctx context.Context, entityID string) ([]MediaInterface, error)
 
-	// PostFileSoftDelete marks a post file as deleted without permanent removal.
-	PostFileSoftDelete(ctx context.Context, file PostFileInterface) error
+	// MediaSoftDelete marks a media as deleted without permanent removal.
+	MediaSoftDelete(ctx context.Context, media MediaInterface) error
 
-	// PostFileSoftDeleteByID marks a post file as deleted by its ID.
-	PostFileSoftDeleteByID(ctx context.Context, id string) error
+	// MediaSoftDeleteByID marks a media as deleted by its ID.
+	MediaSoftDeleteByID(ctx context.Context, id string) error
 
-	// PostFileUpdate modifies an existing post file in the store.
-	PostFileUpdate(ctx context.Context, file PostFileInterface) error
+	// MediaUpdate modifies an existing media in the store.
+	MediaUpdate(ctx context.Context, media MediaInterface) error
 }
 
 var _ StoreInterface = (*storeImplementation)(nil) // verify it extends the interface
@@ -255,7 +255,7 @@ type storeImplementation struct {
 	taxonomyTableName     string
 	termTableName         string
 	termRelationTableName string
-	postFileTableName     string
+	mediaTableName        string
 	db                    *neat.Database
 	timeoutSeconds        int64
 	automigrateEnabled    bool
@@ -408,19 +408,23 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 		}
 	}
 
-	// Create post file table if post file table name is set
-	if store.postFileTableName != "" {
-		if !store.db.Schema().HasTable(store.postFileTableName) {
-			err := store.db.Schema().Create(store.postFileTableName, func(table contractsschema.Blueprint) {
+	// Create media table if media table name is set
+	if store.mediaTableName != "" {
+		if !store.db.Schema().HasTable(store.mediaTableName) {
+			err := store.db.Schema().Create(store.mediaTableName, func(table contractsschema.Blueprint) {
 				table.String(COLUMN_ID, 21)
 				table.Primary(COLUMN_ID)
-				table.String(COLUMN_POST_ID, 21)
-				table.String(COLUMN_NAME, 255).Default("")
-				table.LongText(COLUMN_URL).Default("")
-				table.String(COLUMN_FILE_TYPE, 100).Default("")
+				table.String(COLUMN_ENTITY_ID, 21)
+				table.String(COLUMN_TITLE, 255).Default("")
+				table.Text(COLUMN_DESCRIPTION).Default("")
+				table.String(COLUMN_MEMO, 255).Default("")
+				table.LongText(COLUMN_MEDIA_URL).Default("")
+				table.String(COLUMN_MEDIA_TYPE, 100).Default("")
 				table.String(COLUMN_FILE_SIZE, 50).Default("0")
 				table.String(COLUMN_FILE_EXTENSION, 20).Default("")
 				table.Integer(COLUMN_SEQUENCE).Default(0)
+				table.String(COLUMN_STATUS, 50).Default(MEDIA_STATUS_DRAFT)
+				table.Text(COLUMN_METAS).Default("{}")
 				table.DateTime(COLUMN_CREATED_AT).GetUseCurrent()
 				table.DateTime(COLUMN_UPDATED_AT).GetUseCurrent()
 				table.DateTime(constants.SoftDeleteAtColumn).Default(constants.MaxSoftDeletedAtDefault)
@@ -477,10 +481,10 @@ func (store *storeImplementation) MigrateDown(ctx context.Context, tx ...*sql.Tx
 		}
 	}
 
-	// Drop post file table
-	if store.postFileTableName != "" {
-		if store.db.Schema().HasTable(store.postFileTableName) {
-			err := store.db.Schema().Drop(store.postFileTableName)
+	// Drop media table
+	if store.mediaTableName != "" {
+		if store.db.Schema().HasTable(store.mediaTableName) {
+			err := store.db.Schema().Drop(store.mediaTableName)
 			if err != nil {
 				log.Println(err)
 				return err
@@ -556,14 +560,14 @@ func (st *storeImplementation) SetTermRelationTableName(tableName string) {
 	st.termRelationTableName = tableName
 }
 
-// GetPostFileTableName returns the post file table name
-func (st *storeImplementation) GetPostFileTableName() string {
-	return st.postFileTableName
+// GetMediaTableName returns the media table name
+func (st *storeImplementation) GetMediaTableName() string {
+	return st.mediaTableName
 }
 
-// SetPostFileTableName sets the post file table name
-func (st *storeImplementation) SetPostFileTableName(tableName string) {
-	st.postFileTableName = tableName
+// SetMediaTableName sets the media table name
+func (st *storeImplementation) SetMediaTableName(tableName string) {
+	st.mediaTableName = tableName
 }
 
 // PostCreate inserts a new post into the database.

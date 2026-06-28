@@ -14,7 +14,7 @@ type NewStoreOptions struct {
 	TaxonomyTableName     string
 	TermTableName         string
 	TermRelationTableName string
-	PostFileTableName     string
+	MediaTableName        string
 	DB                    *sql.DB
 	TimeoutSeconds        int64
 	AutomigrateEnabled    bool
@@ -46,8 +46,8 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 		opts.TermRelationTableName = "blog_term_rel"
 	}
 
-	if opts.PostFileTableName == "" {
-		opts.PostFileTableName = "blog_post_file"
+	if opts.MediaTableName == "" {
+		opts.MediaTableName = "blog_media"
 	}
 
 	if opts.DB == nil {
@@ -68,7 +68,7 @@ func NewStore(opts NewStoreOptions) (StoreInterface, error) {
 		taxonomyTableName:     opts.TaxonomyTableName,
 		termTableName:         opts.TermTableName,
 		termRelationTableName: opts.TermRelationTableName,
-		postFileTableName:     opts.PostFileTableName,
+		mediaTableName:        opts.MediaTableName,
 		automigrateEnabled:    opts.AutomigrateEnabled,
 		db:                    neatDB,
 		debugEnabled:          opts.DebugEnabled,

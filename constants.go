@@ -58,11 +58,16 @@ const COLUMN_SEQUENCE = "sequence"
 const TAXONOMY_CATEGORY = "category"
 const TAXONOMY_TAG = "tag"
 
-// Post file columns
-const COLUMN_URL = "url"
-const COLUMN_FILE_TYPE = "file_type"
+// Media columns
+const COLUMN_MEDIA_URL = "media_url"
+const COLUMN_MEDIA_TYPE = "media_type"
 const COLUMN_FILE_SIZE = "file_size"
 const COLUMN_FILE_EXTENSION = "file_extension"
+
+// Media status constants
+const MEDIA_STATUS_DRAFT = "draft"
+const MEDIA_STATUS_ACTIVE = "active"
+const MEDIA_STATUS_INACTIVE = "inactive"
 
 // Meta key names
 const META_KEY_OLD_SLUGS = "_old_slugs"

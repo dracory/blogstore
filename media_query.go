@@ -1,20 +1,22 @@
 package blogstore
 
-// PostFileQueryOptions defines query options for listing post files.
-type PostFileQueryOptions struct {
-	// ID filters by a single post file ID.
+// MediaQueryOptions defines query options for listing media.
+type MediaQueryOptions struct {
+	// ID filters by a single media ID.
 	ID string
-	// IDIn filters by multiple post file IDs.
+	// IDIn filters by multiple media IDs.
 	IDIn []string
-	// PostID filters by the associated post ID.
-	PostID string
-	// PostIDIn filters by multiple post IDs.
-	PostIDIn []string
+	// EntityID filters by the associated entity ID.
+	EntityID string
+	// EntityIDIn filters by multiple entity IDs.
+	EntityIDIn []string
 	// Extension filters by file extension.
 	Extension string
 	// Type filters by file type (mime type).
 	Type string
-	// Search performs a case-insensitive search on name.
+	// Status filters by media status.
+	Status string
+	// Search performs a case-insensitive search on title.
 	Search string
 	// Offset is the number of records to skip for pagination.
 	Offset int
@@ -26,6 +28,6 @@ type PostFileQueryOptions struct {
 	OrderBy string
 	// CountOnly returns only the count, not the actual records.
 	CountOnly bool
-	// WithDeleted includes soft-deleted post files in the results.
+	// WithDeleted includes soft-deleted media in the results.
 	WithDeleted bool
 }
