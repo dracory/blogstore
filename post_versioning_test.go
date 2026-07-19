@@ -338,7 +338,7 @@ func BenchmarkPostMarshalToVersioning(b *testing.B) {
 		SetFeatured(YES)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := post.MarshalToVersioning()
 		if err != nil {
 			b.Fatal(err)
@@ -360,7 +360,7 @@ func BenchmarkPostUnmarshalFromVersioning(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		newPost := NewPost()
 		err := newPost.UnmarshalFromVersioning(versionedData)
 		if err != nil {

@@ -729,7 +729,7 @@ func (store *storeImplementation) postTermList(ctx context.Context, postID strin
 }
 
 // postTermUpdateSequence updates the sequence of a specific term relation.
-func (store *storeImplementation) postTermUpdateSequence(ctx context.Context, postID, termID string, sequence int) error {
+func (store *storeImplementation) postTermUpdateSequence(_ context.Context, postID, termID string, sequence int) error {
 	_, err := store.db.Query().
 		Table(store.termRelationTableName).
 		Where(COLUMN_POST_ID+" = ? AND "+COLUMN_TERM_ID+" = ?", postID, termID).
@@ -855,6 +855,9 @@ func (store *storeImplementation) PostListByTermID(ctx context.Context, termID s
 			return []PostInterface{}, err
 		}
 		postIDs = append(postIDs, postID)
+	}
+	if err := rows.Err(); err != nil {
+		return []PostInterface{}, err
 	}
 
 	if len(postIDs) == 0 {

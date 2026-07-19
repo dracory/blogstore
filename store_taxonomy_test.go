@@ -665,6 +665,9 @@ func getPostTermSequences(t *testing.T, ctx context.Context, store StoreInterfac
 		}
 		sequences[termID] = seq
 	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("Failed to iterate rows: %v", err)
+	}
 	return sequences
 }
 
