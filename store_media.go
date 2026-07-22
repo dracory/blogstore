@@ -77,6 +77,9 @@ func (store *storeImplementation) MediaCount(ctx context.Context, options MediaQ
 		return 0, errors.New("ctx is nil")
 	}
 
+	options.Limit = 0
+	options.Offset = 0
+
 	q := store.buildMediaQuery(options)
 
 	var count int64

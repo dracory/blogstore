@@ -21,6 +21,9 @@ func (store *storeImplementation) TaxonomyCount(ctx context.Context, options Tax
 		return -1, errors.New("taxonomy is not enabled")
 	}
 
+	options.Limit = 0
+	options.Offset = 0
+
 	q := store.buildTaxonomyQuery(options)
 
 	var count int64
@@ -264,6 +267,9 @@ func (store *storeImplementation) TermCount(ctx context.Context, options TermQue
 	if !store.taxonomyEnabled {
 		return -1, errors.New("taxonomy is not enabled")
 	}
+
+	options.Limit = 0
+	options.Offset = 0
 
 	q := store.buildTermQuery(options)
 

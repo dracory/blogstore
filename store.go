@@ -639,6 +639,9 @@ func (store *storeImplementation) PostCount(ctx context.Context, options PostQue
 		return 0, errors.New("ctx is nil")
 	}
 
+	options.Limit = 0
+	options.Offset = 0
+
 	q := store.buildPostQuery(options)
 
 	var count int64
