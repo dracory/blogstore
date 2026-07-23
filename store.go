@@ -1078,7 +1078,7 @@ func (st *storeImplementation) buildPostQuery(options PostQueryOptions) contract
 		if order == "" {
 			order = "DESC"
 		}
-		q = q.OrderBy(options.OrderBy + " " + order)
+		q = q.OrderBy(options.OrderBy, order)
 	}
 
 	if options.Limit > 0 {
