@@ -100,6 +100,59 @@ store.PostSetTerms(ctx, postID, "category", []string{prog.GetID()})
 terms, _ := store.TermListByPostID(ctx, postID, "category")
 ```
 
+## Media Handler
+
+Blog Store includes a standalone HTTP handler for serving media files (images, documents, etc.) stored in the media table. The handler is fully configurable — the host application decides the URL prefix.
+
+### Features
+
+- Serves media from data URIs (base64), HTTP URLs (redirect), or file paths
+- Configurable URL prefix (defaults to `/blog/media/`)
+- Generates clean display URLs for admin UIs via `ServeURL()`
+- Supports two URL formats: `{prefix}{id}.{ext}` and `{prefix}{id}/{handle}.{ext}`
+
+### Usage
+
+```go
+// Create the handler with your store and desired URL prefix
+handler := blogstore.NewMediaHandler(blogStore, "/blog/media/")
+
+// Register it with your router
+router.AddRoute(route.
+    SetPath("/blog/media/*").
+    SetMethod(http.MethodGet).
+    SetHTMLHandler(handler.Handler))
+
+// Generate a display URL for admin UIs
+url := handler.ServeURL(media.GetID(), media.GetExtension())
+// Returns: /blog/media/abc123.png
+```
+
+### Custom Prefix
+
+The URL prefix is configurable so the host app controls the routing:
+
+```go
+// Use a custom prefix
+handler := blogstore.NewMediaHandler(blogStore, "/uploads/blog/")
+
+// ServeURL will generate: /uploads/blog/abc123.png
+url := handler.ServeURL("abc123", ".png")
+
+// The handler will parse media IDs from /uploads/blog/* paths
+```
+
+### URL Formats
+
+Both formats resolve to the same media record by ID:
+
+| Format | Example |
+|--------|---------|
+| Short | `/blog/media/abc123.png` |
+| Readable | `/blog/media/abc123/my-image-name.png` |
+
+The readable format includes a cosmetic handle for user-friendly URLs — lookup is always by media ID.
+
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). You can find a copy of the license at [https://www.gnu.org/licenses/agpl-3.0.en.html](https://www.gnu.org/licenses/agpl-3.0.txt)
