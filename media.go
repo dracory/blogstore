@@ -126,6 +126,9 @@ type MediaInterface interface {
 	// IsVideo returns true if the media type starts with "video/".
 	IsVideo() bool
 
+	// ServeURL returns the clean display URL for this media: /blog/media/{mediaId}.{ext}
+	ServeURL() string
+
 	// GetData returns all media data as a map.
 	GetData() map[string]string
 }
@@ -480,6 +483,14 @@ func (o *mediaImplementation) IsImage() bool {
 // IsVideo returns true if the media type starts with "video/".
 func (o *mediaImplementation) IsVideo() bool {
 	return strings.HasPrefix(o.Type, "video/")
+}
+
+func (o *mediaImplementation) ServeURL() string {
+	ext := strings.TrimPrefix(o.GetExtension(), ".")
+	if ext != "" {
+		ext = "." + ext
+	}
+	return "/blog/media/" + o.GetID() + ext
 }
 
 // GetData returns all media data as a map.
