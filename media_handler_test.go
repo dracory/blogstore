@@ -9,7 +9,9 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func TestExtractBlogMediaID(t *testing.T) {
+func TestMediaHandler_ExtractMediaID(t *testing.T) {
+	handler := NewMediaHandler(nil, "/blog/media/")
+
 	tests := []struct {
 		name     string
 		urlPath  string
@@ -28,15 +30,40 @@ func TestExtractBlogMediaID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractBlogMediaID(tt.urlPath)
+			got := handler.extractMediaID(tt.urlPath)
 			if got != tt.expected {
-				t.Errorf("extractBlogMediaID(%q) = %q, want %q", tt.urlPath, got, tt.expected)
+				t.Errorf("extractMediaID(%q) = %q, want %q", tt.urlPath, got, tt.expected)
 			}
 		})
 	}
 }
 
-func TestIsMediaURL(t *testing.T) {
+func TestMediaHandler_ExtractMediaID_CustomPrefix(t *testing.T) {
+	handler := NewMediaHandler(nil, "/custom/media/")
+
+	tests := []struct {
+		name     string
+		urlPath  string
+		expected string
+	}{
+		{"custom prefix png", "/custom/media/abc123.png", "abc123"},
+		{"custom prefix readable", "/custom/media/abc123/handle.jpg", "abc123"},
+		{"wrong prefix returns first segment", "/blog/media/abc123.png", "blog"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := handler.extractMediaID(tt.urlPath)
+			if got != tt.expected {
+				t.Errorf("extractMediaID(%q) = %q, want %q", tt.urlPath, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMediaHandler_IsMediaURL(t *testing.T) {
+	handler := NewMediaHandler(nil, "/blog/media/")
+
 	tests := []struct {
 		path     string
 		expected bool
@@ -52,7 +79,7 @@ func TestIsMediaURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-			got := IsMediaURL(tt.path)
+			got := handler.IsMediaURL(tt.path)
 			if got != tt.expected {
 				t.Errorf("IsMediaURL(%q) = %v, want %v", tt.path, got, tt.expected)
 			}
@@ -60,27 +87,41 @@ func TestIsMediaURL(t *testing.T) {
 	}
 }
 
-func TestMediaServeURL(t *testing.T) {
-	media := NewMedia()
-	media.SetID("abc123")
-	media.SetExtension(".png")
+func TestMediaHandler_ServeURL(t *testing.T) {
+	handler := NewMediaHandler(nil, "/blog/media/")
 
-	got := media.ServeURL()
+	got := handler.ServeURL("abc123", ".png")
 	expected := "/blog/media/abc123.png"
 	if got != expected {
 		t.Errorf("expected ServeURL %q, got %q", expected, got)
 	}
 }
 
-func TestMediaServeURL_NoExtension(t *testing.T) {
-	media := NewMedia()
-	media.SetID("abc123")
-	media.SetExtension("")
+func TestMediaHandler_ServeURL_NoExtension(t *testing.T) {
+	handler := NewMediaHandler(nil, "/blog/media/")
 
-	got := media.ServeURL()
+	got := handler.ServeURL("abc123", "")
 	expected := "/blog/media/abc123"
 	if got != expected {
 		t.Errorf("expected ServeURL %q, got %q", expected, got)
+	}
+}
+
+func TestMediaHandler_ServeURL_CustomPrefix(t *testing.T) {
+	handler := NewMediaHandler(nil, "/custom/media/")
+
+	got := handler.ServeURL("abc123", ".png")
+	expected := "/custom/media/abc123.png"
+	if got != expected {
+		t.Errorf("expected ServeURL %q, got %q", expected, got)
+	}
+}
+
+func TestMediaHandler_DefaultPrefix(t *testing.T) {
+	handler := NewMediaHandler(nil, "")
+
+	if handler.MediaPrefix() != "/blog/media/" {
+		t.Errorf("expected default prefix /blog/media/, got %s", handler.MediaPrefix())
 	}
 }
 
@@ -108,7 +149,7 @@ func TestMediaHandler_DataURI(t *testing.T) {
 		t.Fatalf("Failed to create media: %v", err)
 	}
 
-	handler := NewMediaHandler(store)
+	handler := NewMediaHandler(store, "/blog/media/")
 
 	req := httptest.NewRequest("GET", "/blog/media/test123.png", nil)
 	recorder := httptest.NewRecorder()
@@ -147,7 +188,7 @@ func TestMediaHandler_NotFound(t *testing.T) {
 		t.Fatalf("Failed to init store: %v", err)
 	}
 
-	handler := NewMediaHandler(store)
+	handler := NewMediaHandler(store, "/blog/media/")
 
 	req := httptest.NewRequest("GET", "/blog/media/nonexistent.png", nil)
 	recorder := httptest.NewRecorder()
@@ -182,7 +223,7 @@ func TestMediaHandler_InactiveMedia(t *testing.T) {
 		t.Fatalf("Failed to create media: %v", err)
 	}
 
-	handler := NewMediaHandler(store)
+	handler := NewMediaHandler(store, "/blog/media/")
 
 	req := httptest.NewRequest("GET", "/blog/media/inactive123.png", nil)
 	recorder := httptest.NewRecorder()
@@ -217,7 +258,7 @@ func TestMediaHandler_HTTPRedirect(t *testing.T) {
 		t.Fatalf("Failed to create media: %v", err)
 	}
 
-	handler := NewMediaHandler(store)
+	handler := NewMediaHandler(store, "/blog/media/")
 
 	req := httptest.NewRequest("GET", "/blog/media/redirect123.png", nil)
 	recorder := httptest.NewRecorder()
@@ -230,5 +271,45 @@ func TestMediaHandler_HTTPRedirect(t *testing.T) {
 
 	if recorder.Header().Get("Location") != "https://example.com/image.png" {
 		t.Errorf("expected redirect to https://example.com/image.png, got %s", recorder.Header().Get("Location"))
+	}
+}
+
+func TestMediaHandler_CustomPrefix(t *testing.T) {
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		MediaTableName:     "blog_media",
+		DB:                 initDB(),
+		AutomigrateEnabled: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to init store: %v", err)
+	}
+
+	media := NewMedia().
+		SetID("custom123").
+		SetEntityID("post1").
+		SetExtension(".png").
+		SetType("image/png").
+		SetSize("68").
+		SetURL("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==").
+		SetStatus(MEDIA_STATUS_ACTIVE)
+
+	if err := store.MediaCreate(context.Background(), media); err != nil {
+		t.Fatalf("Failed to create media: %v", err)
+	}
+
+	handler := NewMediaHandler(store, "/custom/media/")
+
+	req := httptest.NewRequest("GET", "/custom/media/custom123.png", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.Handler(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Errorf("expected status %d with custom prefix, got %d", http.StatusOK, recorder.Code)
+	}
+
+	if recorder.Header().Get("ETag") != "custom123" {
+		t.Errorf("expected ETag custom123, got %s", recorder.Header().Get("ETag"))
 	}
 }

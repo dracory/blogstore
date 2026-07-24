@@ -8,21 +8,48 @@ import (
 	"strings"
 )
 
-// MediaHandler is a standalone HTTP handler that serves blog media files
-// via /blog/media/{mediaId}.{ext}. It looks up the media record by ID and
-// serves the content from whatever GetURL() the record holds.
+// defaultMediaPrefix is the default URL prefix for blog media serving.
+const defaultMediaPrefix = "/blog/media/"
+
+// MediaHandler is a standalone HTTP handler that serves blog media files.
+// It looks up the media record by ID and serves the content from whatever
+// GetURL() the record holds (data URI, HTTP URL, file path).
+//
+// The URL prefix is configurable via the mediaPrefix parameter.
+// For example, if the host app routes /blog/media/* to this handler,
+// pass "/blog/media/" as the prefix.
 //
 // Usage:
 //
-//	handler := blogstore.NewMediaHandler(store)
-//	router.AddRoute(route.SetPath("/blog/media/*").SetHTMLHandler(handler))
+//	handler := blogstore.NewMediaHandler(store, "/blog/media/")
+//	router.AddRoute(route.SetPath("/blog/media/*").SetHTMLHandler(handler.Handler))
 type MediaHandler struct {
-	store StoreInterface
+	store       StoreInterface
+	mediaPrefix string
 }
 
 // NewMediaHandler creates a new MediaHandler for the given store.
-func NewMediaHandler(store StoreInterface) *MediaHandler {
-	return &MediaHandler{store: store}
+// If mediaPrefix is empty, it defaults to "/blog/media/".
+func NewMediaHandler(store StoreInterface, mediaPrefix string) *MediaHandler {
+	if mediaPrefix == "" {
+		mediaPrefix = defaultMediaPrefix
+	}
+	return &MediaHandler{store: store, mediaPrefix: mediaPrefix}
+}
+
+// MediaPrefix returns the configured media URL prefix.
+func (h *MediaHandler) MediaPrefix() string {
+	return h.mediaPrefix
+}
+
+// ServeURL returns the clean display URL for a media item: {prefix}{mediaId}.{ext}
+// This can be used by admin UIs to show copyable URLs.
+func (h *MediaHandler) ServeURL(mediaID, extension string) string {
+	ext := strings.TrimPrefix(extension, ".")
+	if ext != "" {
+		ext = "." + ext
+	}
+	return h.mediaPrefix + mediaID + ext
 }
 
 // Handler serves the media content. It returns a string to be compatible
@@ -33,7 +60,7 @@ func (h *MediaHandler) Handler(w http.ResponseWriter, r *http.Request) string {
 		return "Blog store not configured"
 	}
 
-	mediaID := extractBlogMediaID(r.URL.Path)
+	mediaID := h.extractMediaID(r.URL.Path)
 	if mediaID == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return "Media not found"
@@ -110,13 +137,18 @@ func (h *MediaHandler) serveFilePath(w http.ResponseWriter, r *http.Request, fil
 	return ""
 }
 
-// extractBlogMediaID parses the media ID from URL paths in either format:
-//   - /blog/media/<id>.<ext>           (e.g. /blog/media/sbm2hdy7x10.png)
-//   - /blog/media/<id>/<handle>.<ext>  (e.g. /blog/media/sbm2hdy7x10/image.png)
+// IsMediaURL checks if the given path matches this handler's media URL prefix.
+func (h *MediaHandler) IsMediaURL(path string) bool {
+	return strings.HasPrefix(path, h.mediaPrefix)
+}
+
+// extractMediaID parses the media ID from URL paths in either format:
+//   - {prefix}<id>.<ext>           (e.g. /blog/media/sbm2hdy7x10.png)
+//   - {prefix}<id>/<handle>.<ext>  (e.g. /blog/media/sbm2hdy7x10/image.png)
 //
 // The handle in the second form is cosmetic — lookup is always by ID.
-func extractBlogMediaID(urlPath string) string {
-	path := strings.TrimPrefix(urlPath, "/blog/media/")
+func (h *MediaHandler) extractMediaID(urlPath string) string {
+	path := strings.TrimPrefix(urlPath, h.mediaPrefix)
 	path = strings.TrimPrefix(path, "/")
 	path = strings.TrimSuffix(path, "/")
 
@@ -128,11 +160,6 @@ func extractBlogMediaID(urlPath string) string {
 		return path[:idx]
 	}
 	return path
-}
-
-// IsMediaURL checks if the given path is a blog media URL.
-func IsMediaURL(path string) bool {
-	return strings.HasPrefix(path, "/blog/media/")
 }
 
 // decodeDataURL decodes a base64 data URL (e.g. "data:image/png;base64,...")
