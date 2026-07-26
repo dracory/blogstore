@@ -3,7 +3,7 @@ module github.com/dracory/blogstore
 go 1.26.3
 
 require (
-	github.com/dracory/neat v0.31.0
+	github.com/dracory/neat v0.33.0
 	github.com/dracory/sb v0.26.0
 	github.com/dracory/str v0.18.0
 	github.com/dromara/carbon/v2 v2.6.16
@@ -18,7 +18,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/georgysavva/scany v1.2.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/mattn/go-isatty v0.0.23 // indirect
+	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/spf13/cast v1.10.0 // indirect
