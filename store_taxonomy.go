@@ -43,6 +43,14 @@ func (store *storeImplementation) buildTaxonomyQuery(options TaxonomyQueryOption
 		q = q.Where(COLUMN_SLUG+" = ?", options.Slug)
 	}
 
+	if options.OrderBy != "" {
+		order := options.SortOrder
+		if order == "" {
+			order = "ASC"
+		}
+		q = q.OrderBy(options.OrderBy, order)
+	}
+
 	if options.Limit > 0 {
 		q = q.Limit(options.Limit)
 	}
@@ -311,6 +319,14 @@ func (store *storeImplementation) buildTermQuery(options TermQueryOptions) contr
 
 	if options.Slug != "" {
 		q = q.Where(COLUMN_SLUG+" = ?", options.Slug)
+	}
+
+	if options.OrderBy != "" {
+		order := options.SortOrder
+		if order == "" {
+			order = "ASC"
+		}
+		q = q.OrderBy(options.OrderBy, order)
 	}
 
 	if options.Limit > 0 {
