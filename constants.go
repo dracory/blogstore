@@ -15,6 +15,7 @@ const POST_EDITOR_HTMLAREA = "HtmlArea"
 const POST_EDITOR_TEXTAREA = "TextArea"
 
 const POST_CONTENT_TYPE_MARKDOWN = "markdown"
+const POST_CONTENT_TYPE_MARKDOWN_EASY_MDE = "markdown_easy_mde"
 const POST_CONTENT_TYPE_HTML = "html"
 const POST_CONTENT_TYPE_PLAIN_TEXT = "plain_text"
 const POST_CONTENT_TYPE_BLOCKS = "blocks"
