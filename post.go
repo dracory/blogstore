@@ -229,7 +229,7 @@ var _ PostInterface = (*postImplementation)(nil)
 // current timestamps, and an empty metadata map.
 func NewPost() PostInterface {
 	o := &postImplementation{}
-	o.SetID(GenerateShortID()).
+	o.SetID(GenerateID()).
 		SetAuthorID("").
 		SetCanonicalURL("").
 		SetContent("").

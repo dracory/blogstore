@@ -2,6 +2,7 @@ package blogstore
 
 import (
 	"time"
+	"uuid"
 
 	"github.com/dracory/neat/database/orm"
 	"github.com/dracory/neat/database/soft_delete"
@@ -88,7 +89,7 @@ func NewVersioningFromExistingData(data map[string]string) VersioningInterface {
 	o := &versioningImplementation{}
 
 	if data == nil {
-		o.SetID(GenerateShortID())
+		o.SetID(uuid.NewV7().String())
 		o.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC))
 		o.SetSoftDeletedAt(MAX_DATETIME)
 		return o

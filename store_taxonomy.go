@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"time"
+	"uuid"
 
 	contractsorm "github.com/dracory/neat/contracts/database/orm"
 	"github.com/dromara/carbon/v2"
@@ -77,7 +78,7 @@ func (store *storeImplementation) TaxonomyCreate(ctx context.Context, taxonomy T
 	}
 
 	if taxonomy.GetID() == "" {
-		taxonomy.SetID(GenerateShortID())
+		taxonomy.SetID(uuid.NewV7().String())
 	}
 
 	if taxonomy.GetCreatedAt() == "" {
@@ -355,7 +356,7 @@ func (store *storeImplementation) TermCreate(ctx context.Context, term TermInter
 	}
 
 	if term.GetID() == "" {
-		term.SetID(GenerateShortID())
+		term.SetID(uuid.NewV7().String())
 	}
 
 	if term.GetCreatedAt() == "" {
@@ -578,7 +579,7 @@ func (store *storeImplementation) PostInsertTermAt(ctx context.Context, postID s
 		return errors.New("post id and term id are required")
 	}
 
-	relationID := GenerateShortID()
+	relationID := uuid.NewV7().String()
 	now := carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)
 
 	db, err := store.db.DB()

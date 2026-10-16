@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"uuid"
 
 	contractsorm "github.com/dracory/neat/contracts/database/orm"
 	"github.com/dromara/carbon/v2"
@@ -24,7 +25,7 @@ func (store *storeImplementation) MediaCreate(ctx context.Context, media MediaIn
 		return errors.New("media is nil")
 	}
 	if media.GetID() == "" {
-		media.SetID(GenerateShortID())
+		media.SetID(uuid.NewV7().String())
 	}
 	if media.GetEntityID() == "" {
 		return errors.New("media entity_id is empty")

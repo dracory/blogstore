@@ -4,15 +4,29 @@ import (
 	"errors"
 	"math/big"
 	"strings"
-
-	"github.com/dracory/uid"
+	"uuid"
 )
 
 const crockfordAlphabet = "0123456789abcdefghjkmnpqrstvwxyz"
 
-// GenerateShortID generates a new shortened ID using uid.SafeShortID
-func GenerateShortID() string {
-	return strings.ToLower(uid.SafeShortID())
+// GenerateID generates a new blog post ID.
+// Default: UUIDv7 (RFC 9562) string.
+// Override via SetIDGenerator to use a different scheme (nanoid, base32, etc.)
+// when a shorter post ID is preferred for URLs (e.g. /post/<id>/<slug>).
+var GenerateID = func() string {
+	return uuid.NewV7().String()
+}
+
+// SetIDGenerator replaces the ID generator used for blog posts
+// (NewPost and PostCreate fallback).
+// Must be set once at application startup, before any store usage.
+// Passing nil resets the default UUIDv7 generator.
+func SetIDGenerator(fn func() string) {
+	if fn == nil {
+		GenerateID = func() string { return uuid.NewV7().String() }
+		return
+	}
+	GenerateID = fn
 }
 
 // ShortenID shortens any numeric ID string using Crockford Base32

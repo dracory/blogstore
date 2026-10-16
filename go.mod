@@ -6,7 +6,6 @@ require (
 	github.com/dracory/neat v0.57.0
 	github.com/dracory/sb v0.26.0
 	github.com/dracory/str v0.19.0
-	github.com/dracory/uid v1.13.0
 	github.com/dromara/carbon/v2 v2.6.18
 	github.com/samber/lo v1.53.0
 	modernc.org/sqlite v1.60.1
@@ -15,6 +14,7 @@ require (
 // replace github.com/dracory/neat => ../neat
 
 require (
+	github.com/dracory/uid v1.13.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/georgysavva/scany v1.2.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect

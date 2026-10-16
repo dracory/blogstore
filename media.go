@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"uuid"
 
 	"github.com/dracory/neat/database/orm"
 	"github.com/dracory/neat/database/soft_delete"
@@ -138,7 +139,7 @@ var _ MediaInterface = (*mediaImplementation)(nil)
 // draft status, and the max datetime for soft deletion (not deleted).
 func NewMedia() MediaInterface {
 	o := &mediaImplementation{}
-	o.SetID(GenerateShortID()).
+	o.SetID(uuid.NewV7().String()).
 		SetEntityID("").
 		SetTitle("").
 		SetDescription("").

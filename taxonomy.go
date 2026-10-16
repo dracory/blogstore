@@ -3,6 +3,7 @@ package blogstore
 import (
 	"strconv"
 	"time"
+	"uuid"
 
 	"github.com/dracory/neat/database/orm"
 	"github.com/dracory/str"
@@ -245,7 +246,7 @@ var _ TermRelationInterface = (*termRelationImplementation)(nil)
 // and current timestamps for created_at and updated_at.
 func NewTaxonomy() TaxonomyInterface {
 	o := &taxonomyImplementation{}
-	o.SetID(GenerateShortID()).
+	o.SetID(uuid.NewV7().String()).
 		SetName("").
 		SetSlug("").
 		SetDescription("").
@@ -483,7 +484,7 @@ func (o *taxonomyImplementation) IsDirty() bool {
 // zero sequence, empty name/slug/description, zero count, and current timestamps.
 func NewTerm() TermInterface {
 	o := &termImplementation{}
-	o.SetID(GenerateShortID()).
+	o.SetID(uuid.NewV7().String()).
 		SetTaxonomyID("").
 		SetParentID("").
 		SetSequence(0).
@@ -797,7 +798,7 @@ func (o *termImplementation) IsDirty() bool {
 // zero sequence, and current timestamps.
 func NewTermRelation() TermRelationInterface {
 	o := &termRelationImplementation{}
-	o.SetID(GenerateShortID()).
+	o.SetID(uuid.NewV7().String()).
 		SetPostID("").
 		SetTermID("").
 		SetSequence(0).

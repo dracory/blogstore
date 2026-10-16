@@ -294,7 +294,7 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 	// Create main post table
 	if !store.db.Schema().HasTable(store.postTableName) {
 		err := store.db.Schema().Create(store.postTableName, func(table contractsschema.Blueprint) {
-			table.String(COLUMN_ID, 21)
+			table.String(COLUMN_ID, 40)
 			table.Primary(COLUMN_ID)
 			table.String(COLUMN_SLUG, 255).Default("")
 			table.String(COLUMN_TITLE, 255)
@@ -334,7 +334,7 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 		// Create taxonomy table
 		if !store.db.Schema().HasTable(store.taxonomyTableName) {
 			err := store.db.Schema().Create(store.taxonomyTableName, func(table contractsschema.Blueprint) {
-				table.String(COLUMN_ID, 21)
+				table.String(COLUMN_ID, 40)
 				table.Primary(COLUMN_ID)
 				table.String(COLUMN_NAME, 255)
 				table.String(COLUMN_SLUG, 255)
@@ -351,10 +351,10 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 		// Create term table
 		if !store.db.Schema().HasTable(store.termTableName) {
 			err := store.db.Schema().Create(store.termTableName, func(table contractsschema.Blueprint) {
-				table.String(COLUMN_ID, 21)
+				table.String(COLUMN_ID, 40)
 				table.Primary(COLUMN_ID)
-				table.String(COLUMN_TAXONOMY_ID, 21)
-				table.String(COLUMN_PARENT_ID, 21)
+				table.String(COLUMN_TAXONOMY_ID, 40)
+				table.String(COLUMN_PARENT_ID, 40)
 				table.Integer(COLUMN_SEQUENCE)
 				table.String(COLUMN_NAME, 255)
 				table.String(COLUMN_SLUG, 255)
@@ -372,10 +372,10 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 		// Create term relation table
 		if !store.db.Schema().HasTable(store.termRelationTableName) {
 			err := store.db.Schema().Create(store.termRelationTableName, func(table contractsschema.Blueprint) {
-				table.String(COLUMN_ID, 21)
+				table.String(COLUMN_ID, 40)
 				table.Primary(COLUMN_ID)
-				table.String(COLUMN_POST_ID, 21)
-				table.String(COLUMN_TERM_ID, 21)
+				table.String(COLUMN_POST_ID, 40)
+				table.String(COLUMN_TERM_ID, 40)
 				table.Integer(COLUMN_SEQUENCE)
 				table.DateTime(COLUMN_CREATED_AT)
 				table.DateTime(COLUMN_UPDATED_AT)
@@ -393,7 +393,7 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 		}
 		if !store.db.Schema().HasTable(store.versioningTableName) {
 			err := store.db.Schema().Create(store.versioningTableName, func(table contractsschema.Blueprint) {
-				table.String(COLUMN_ID, 21)
+				table.String(COLUMN_ID, 40)
 				table.Primary(COLUMN_ID)
 				table.String(COLUMN_ENTITY_TYPE, 40)
 				table.String(COLUMN_ENTITY_ID, 40)
@@ -412,9 +412,9 @@ func (store *storeImplementation) MigrateUp(ctx context.Context, tx ...*sql.Tx) 
 	if store.mediaTableName != "" {
 		if !store.db.Schema().HasTable(store.mediaTableName) {
 			err := store.db.Schema().Create(store.mediaTableName, func(table contractsschema.Blueprint) {
-				table.String(COLUMN_ID, 21)
+				table.String(COLUMN_ID, 40)
 				table.Primary(COLUMN_ID)
-				table.String(COLUMN_ENTITY_ID, 21)
+				table.String(COLUMN_ENTITY_ID, 40)
 				table.String(COLUMN_TITLE, 255).Default("")
 				table.Text(COLUMN_DESCRIPTION)
 				table.String(COLUMN_MEMO, 255).Default("")
@@ -578,7 +578,7 @@ func (store *storeImplementation) PostCreate(ctx context.Context, post PostInter
 		return errors.New("ctx is nil")
 	}
 	if post.GetID() == "" {
-		post.SetID(GenerateShortID())
+		post.SetID(GenerateID())
 	}
 
 	post.SetCreatedAt(carbon.Now(carbon.UTC).ToDateTimeString())
