@@ -2,12 +2,13 @@ package blogstore
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/dracory/neat/database/orm"
 	"github.com/dracory/neat/database/soft_delete"
 	"github.com/dracory/str"
 	"github.com/dromara/carbon/v2"
 	"github.com/samber/lo"
-	"time"
 )
 
 // PostInterface defines the interface for blog post operations.
@@ -262,7 +263,7 @@ func NewPostFromExistingData(data map[string]string) PostInterface {
 // postImplementation is the concrete implementation of the PostInterface.
 // It uses neat ORM traits for data storage.
 type postImplementation struct {
-	orm.ShortID
+	orm.StringID
 
 	AuthorIDField        string    `db:"author_id"`
 	CanonicalURLField    string    `db:"canonical_url"`
@@ -750,7 +751,7 @@ func (o *postImplementation) GetData() map[string]string {
 	}
 
 	return map[string]string{
-		COLUMN_ID:               o.ShortID.ID,
+		COLUMN_ID:               o.StringID.ID,
 		COLUMN_AUTHOR_ID:        o.AuthorIDField,
 		COLUMN_CANONICAL_URL:    o.CanonicalURLField,
 		COLUMN_CONTENT:          o.ContentField,
@@ -844,7 +845,7 @@ func (o *postImplementation) Get(key string) string {
 func (o *postImplementation) Set(key string, value string) {
 	switch key {
 	case COLUMN_ID:
-		o.ShortID.ID = value
+		o.StringID.ID = value
 	case COLUMN_AUTHOR_ID:
 		o.AuthorIDField = value
 	case COLUMN_CANONICAL_URL:

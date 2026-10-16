@@ -195,7 +195,7 @@ func (store *storeImplementation) MediaList(ctx context.Context, options MediaQu
 			Status:      r.Status,
 			Metas:       r.Metas,
 		}
-		m.ShortID.ID = r.ID
+		m.StringID.ID = r.ID
 		m.CreatedAt.CreatedAt = r.CreatedAt
 		m.UpdatedAt.UpdatedAt = r.UpdatedAt
 		m.SoftDeletesMaxDate.SoftDeletedAt = r.SoftDeletedAt

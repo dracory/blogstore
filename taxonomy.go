@@ -266,7 +266,7 @@ func NewTaxonomyFromExistingData(data map[string]string) TaxonomyInterface {
 // taxonomyImplementation is the concrete implementation of the TaxonomyInterface.
 // It uses neat ORM traits for data storage.
 type taxonomyImplementation struct {
-	orm.ShortID
+	orm.StringID
 
 	NameField        string `db:"name"`
 	SlugField        string `db:"slug"`
@@ -390,7 +390,7 @@ func (o *taxonomyImplementation) GetData() map[string]string {
 	}
 
 	return map[string]string{
-		COLUMN_ID:          o.ShortID.ID,
+		COLUMN_ID:          o.StringID.ID,
 		COLUMN_NAME:        o.NameField,
 		COLUMN_SLUG:        o.SlugField,
 		COLUMN_DESCRIPTION: o.DescriptionField,
@@ -445,7 +445,7 @@ func (o *taxonomyImplementation) Get(key string) string {
 func (o *taxonomyImplementation) Set(key string, value string) {
 	switch key {
 	case COLUMN_ID:
-		o.ShortID.ID = value
+		o.StringID.ID = value
 	case COLUMN_NAME:
 		o.NameField = value
 	case COLUMN_SLUG:
@@ -508,7 +508,7 @@ func NewTermFromExistingData(data map[string]string) TermInterface {
 // termImplementation is the concrete implementation of the TermInterface.
 // It uses neat ORM traits for data storage.
 type termImplementation struct {
-	orm.ShortID
+	orm.StringID
 
 	TaxonomyIDField  string `db:"taxonomy_id"`
 	ParentIDField    string `db:"parent_id"`
@@ -680,7 +680,7 @@ func (o *termImplementation) GetData() map[string]string {
 	}
 
 	return map[string]string{
-		COLUMN_ID:          o.ShortID.ID,
+		COLUMN_ID:          o.StringID.ID,
 		COLUMN_TAXONOMY_ID: o.TaxonomyIDField,
 		COLUMN_PARENT_ID:   o.ParentIDField,
 		COLUMN_SEQUENCE:    strconv.Itoa(o.SequenceField),
@@ -747,7 +747,7 @@ func (o *termImplementation) Get(key string) string {
 func (o *termImplementation) Set(key string, value string) {
 	switch key {
 	case COLUMN_ID:
-		o.ShortID.ID = value
+		o.StringID.ID = value
 	case COLUMN_TAXONOMY_ID:
 		o.TaxonomyIDField = value
 	case COLUMN_PARENT_ID:
@@ -818,7 +818,7 @@ func NewTermRelationFromExistingData(data map[string]string) TermRelationInterfa
 // termRelationImplementation is the concrete implementation of the TermRelationInterface.
 // It uses neat ORM traits for data storage.
 type termRelationImplementation struct {
-	orm.ShortID
+	orm.StringID
 
 	PostIDField   string `db:"post_id"`
 	TermIDField   string `db:"term_id"`
@@ -941,7 +941,7 @@ func (o *termRelationImplementation) GetData() map[string]string {
 	}
 
 	return map[string]string{
-		COLUMN_ID:         o.ShortID.ID,
+		COLUMN_ID:         o.StringID.ID,
 		COLUMN_POST_ID:    o.PostIDField,
 		COLUMN_TERM_ID:    o.TermIDField,
 		COLUMN_SEQUENCE:   strconv.Itoa(o.SequenceField),
@@ -970,7 +970,7 @@ func (o *termRelationImplementation) MarkAsDirty(columns ...string) {
 func (o *termRelationImplementation) Get(key string) string {
 	switch key {
 	case COLUMN_ID:
-		return o.ShortID.ID
+		return o.StringID.ID
 	case COLUMN_POST_ID:
 		return o.PostIDField
 	case COLUMN_TERM_ID:
@@ -996,7 +996,7 @@ func (o *termRelationImplementation) Get(key string) string {
 func (o *termRelationImplementation) Set(key string, value string) {
 	switch key {
 	case COLUMN_ID:
-		o.ShortID.ID = value
+		o.StringID.ID = value
 	case COLUMN_POST_ID:
 		o.PostIDField = value
 	case COLUMN_TERM_ID:

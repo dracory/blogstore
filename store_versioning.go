@@ -242,7 +242,7 @@ func (store *storeImplementation) VersioningList(ctx context.Context, query Vers
 			ContentField:    r.Content,
 			CreatedAt:       r.CreatedAt,
 		}
-		v.ShortID.ID = r.ID
+		v.StringID.ID = r.ID
 		v.SoftDeletesMaxDate.SoftDeletedAt = r.SoftDeletedAt
 		list = append(list, v)
 	}

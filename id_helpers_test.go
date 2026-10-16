@@ -11,11 +11,8 @@ func TestGenerateShortID(t *testing.T) {
 	if id == "" {
 		t.Errorf("Expected non-empty ID")
 	}
-	if len(id) > 11 {
-		t.Errorf("Expected ID length <= 11, got %d", len(id))
-	}
-	if len(id) < 9 {
-		t.Errorf("Expected ID length >= 9, got %d", len(id))
+	if len(id) != 14 {
+		t.Errorf("Expected ID length 14, got %d", len(id))
 	}
 	if id != strings.ToLower(id) {
 		t.Errorf("ID should be lowercase")

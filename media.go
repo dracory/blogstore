@@ -161,7 +161,7 @@ func NewMedia() MediaInterface {
 // mediaImplementation is the concrete implementation of MediaInterface.
 // It uses neat ORM traits for data storage.
 type mediaImplementation struct {
-	orm.ShortID
+	orm.StringID
 	orm.CreatedAt
 	orm.UpdatedAt
 	soft_delete.SoftDeletesMaxDate
@@ -186,12 +186,12 @@ func (o *mediaImplementation) IsSoftDeleted() bool {
 
 // GetID returns the unique identifier of the media.
 func (o *mediaImplementation) GetID() string {
-	return o.ShortID.ID
+	return o.StringID.ID
 }
 
 // SetID sets the unique identifier of the media.
 func (o *mediaImplementation) SetID(id string) MediaInterface {
-	o.ShortID.ID = id
+	o.StringID.ID = id
 	return o
 }
 
@@ -496,7 +496,7 @@ func (o *mediaImplementation) GetData() map[string]string {
 	}
 
 	return map[string]string{
-		COLUMN_ID:              o.ShortID.ID,
+		COLUMN_ID:              o.StringID.ID,
 		COLUMN_ENTITY_ID:       o.EntityID,
 		COLUMN_TITLE:           o.Title,
 		COLUMN_DESCRIPTION:     o.Description,

@@ -4,17 +4,15 @@ import (
 	"errors"
 	"math/big"
 	"strings"
-	"time"
 
-	neatuid "github.com/dracory/neat/support/uid"
+	"github.com/dracory/uid"
 )
 
 const crockfordAlphabet = "0123456789abcdefghjkmnpqrstvwxyz"
 
-// GenerateShortID generates a new 11-character shortened ID using TimestampMicro
+// GenerateShortID generates a new shortened ID using uid.SafeShortID
 func GenerateShortID() string {
-	time.Sleep(1 * time.Millisecond)
-	return strings.ToLower(neatuid.GenerateShortID())
+	return strings.ToLower(uid.SafeShortID())
 }
 
 // ShortenID shortens any numeric ID string using Crockford Base32

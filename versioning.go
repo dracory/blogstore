@@ -109,7 +109,7 @@ func NewVersioningFromExistingData(data map[string]string) VersioningInterface {
 
 // versioningImplementation implements VersioningInterface.
 type versioningImplementation struct {
-	orm.ShortID
+	orm.StringID
 	soft_delete.SoftDeletesMaxDate
 
 	EntityTypeField string    `db:"entity_type"`
@@ -127,12 +127,12 @@ func (o *versioningImplementation) IsSoftDeleted() bool {
 
 // ID returns the id of the version.
 func (o *versioningImplementation) ID() string {
-	return o.ShortID.ID
+	return o.StringID.ID
 }
 
 // SetID sets the id of the version.
 func (o *versioningImplementation) SetID(id string) VersioningInterface {
-	o.ShortID.ID = id
+	o.StringID.ID = id
 	return o
 }
 
