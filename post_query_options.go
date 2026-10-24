@@ -21,6 +21,13 @@ type PostQueryOptions struct {
 	CreatedAtLessThan string
 	// CreatedAtGreaterThan filters posts created after this timestamp.
 	CreatedAtGreaterThan string
+	// PublishedAtLessThan filters posts published before this timestamp (exclusive).
+	// Use it to exclude future-dated posts (e.g. carbon.Now().ToDateTimeString())
+	// for drip-publishing behaviour. Posts with an empty published_at are excluded.
+	PublishedAtLessThan string
+	// PublishedAtGreaterThan filters posts published after this timestamp (exclusive).
+	// Posts with an empty published_at are excluded.
+	PublishedAtGreaterThan string
 	// Offset is the number of records to skip for pagination.
 	Offset int
 	// Limit is the maximum number of records to return.

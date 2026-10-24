@@ -46,6 +46,18 @@ posts, err := blogStore.PostList(ctx, blogstore.PostQueryOptions{
 })
 ```
 
+To list only posts that are already published (drip-publishing), bound `PublishedAtLessThan` to the current time:
+
+```go
+posts, err := blogStore.PostList(ctx, blogstore.PostQueryOptions{
+    Status:              blogstore.STATUS_PUBLISHED,
+    PublishedAtLessThan: carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC),
+    Limit:               10,
+})
+```
+
+Both `PublishedAtLessThan` and `PublishedAtGreaterThan` use exclusive bounds and exclude posts with an empty `published_at`. The same options apply to `PostCount`.
+
 ## MCP (Model Context Protocol)
 
 Blog Store includes an MCP (Model Context Protocol) HTTP handler that allows LLM clients (for example Windsurf) to manage blog posts via JSON-RPC tools.

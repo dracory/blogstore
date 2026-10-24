@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dracory/sb"
+	"github.com/dromara/carbon/v2"
 	_ "modernc.org/sqlite"
 )
 
@@ -678,5 +679,77 @@ func TestStorePostListSearchOrderingAndWithDeleted(t *testing.T) {
 	}
 	if len(listWithDeleted) != 3 {
 		t.Fatalf("PostList() WithDeleted len = %d, want %d", len(listWithDeleted), 3)
+	}
+}
+
+func TestStorePostListPublishedAtRange(t *testing.T) {
+	db := initDB()
+
+	store, err := NewStore(NewStoreOptions{
+		PostTableName:      "blog_posts",
+		DB:                 db,
+		AutomigrateEnabled: true,
+	})
+
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+
+	ctx := context.Background()
+
+	past := carbon.Now(carbon.UTC).SubDays(10).ToDateTimeString(carbon.UTC)
+	future := carbon.Now(carbon.UTC).AddDays(10).ToDateTimeString(carbon.UTC)
+	now := carbon.Now(carbon.UTC).ToDateTimeString(carbon.UTC)
+
+	posts := []PostInterface{
+		NewPost().SetTitle("Past Post").SetStatus(POST_STATUS_PUBLISHED).SetPublishedAt(past),
+		NewPost().SetTitle("Future Post").SetStatus(POST_STATUS_PUBLISHED).SetPublishedAt(future),
+	}
+
+	for _, p := range posts {
+		if err := store.PostCreate(ctx, p); err != nil {
+			t.Fatalf("PostCreate() error = %v, want nil", err)
+		}
+	}
+
+	// PublishedAtLessThan excludes future-dated posts (drip-publishing)
+	list, err := store.PostList(ctx, PostQueryOptions{PublishedAtLessThan: now})
+	if err != nil {
+		t.Fatalf("PostList() with PublishedAtLessThan error = %v, want nil", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("PostList() with PublishedAtLessThan len = %d, want %d", len(list), 1)
+	}
+	if list[0].GetTitle() != "Past Post" {
+		t.Errorf("PostList() with PublishedAtLessThan title = %q, want %q", list[0].GetTitle(), "Past Post")
+	}
+
+	count, err := store.PostCount(ctx, PostQueryOptions{PublishedAtLessThan: now})
+	if err != nil {
+		t.Fatalf("PostCount() with PublishedAtLessThan error = %v, want nil", err)
+	}
+	if count != 1 {
+		t.Fatalf("PostCount() with PublishedAtLessThan = %d, want %d", count, 1)
+	}
+
+	// PublishedAtGreaterThan returns only future-dated posts
+	list, err = store.PostList(ctx, PostQueryOptions{PublishedAtGreaterThan: now})
+	if err != nil {
+		t.Fatalf("PostList() with PublishedAtGreaterThan error = %v, want nil", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("PostList() with PublishedAtGreaterThan len = %d, want %d", len(list), 1)
+	}
+	if list[0].GetTitle() != "Future Post" {
+		t.Errorf("PostList() with PublishedAtGreaterThan title = %q, want %q", list[0].GetTitle(), "Future Post")
+	}
+
+	// combined range excludes everything outside it
+	list, err = store.PostList(ctx, PostQueryOptions{PublishedAtGreaterThan: now, PublishedAtLessThan: future})
+	if err != nil {
+		t.Fatalf("PostList() with range error = %v, want nil", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("PostList() with exclusive range len = %d, want %d", len(list), 0)
 	}
 }

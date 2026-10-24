@@ -1068,6 +1068,14 @@ func (st *storeImplementation) buildPostQuery(options PostQueryOptions) contract
 		q = q.Where(COLUMN_CREATED_AT+" > ?", carbon.Parse(options.CreatedAtGreaterThan, carbon.UTC).StdTime())
 	}
 
+	if options.PublishedAtLessThan != "" {
+		q = q.Where(COLUMN_PUBLISHED_AT+" < ?", carbon.Parse(options.PublishedAtLessThan, carbon.UTC).StdTime())
+	}
+
+	if options.PublishedAtGreaterThan != "" {
+		q = q.Where(COLUMN_PUBLISHED_AT+" > ?", carbon.Parse(options.PublishedAtGreaterThan, carbon.UTC).StdTime())
+	}
+
 	if options.Search != "" {
 		// Simple search on title and content
 		q = q.Where("("+COLUMN_TITLE+" LIKE ? OR "+COLUMN_CONTENT+" LIKE ?)", "%"+options.Search+"%", "%"+options.Search+"%")
