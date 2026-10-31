@@ -3,7 +3,7 @@ module github.com/dracory/blogstore
 go 1.27.0
 
 require (
-	github.com/dracory/neat v0.57.0
+	github.com/dracory/neat v0.60.0
 	github.com/dracory/sb v0.26.0
 	github.com/dracory/str v0.19.0
 	github.com/dromara/carbon/v2 v2.6.18
