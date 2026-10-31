@@ -8,7 +8,7 @@ require (
 	github.com/dracory/str v0.19.0
 	github.com/dromara/carbon/v2 v2.7.0
 	github.com/samber/lo v1.53.0
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 )
 
 // replace github.com/dracory/neat => ../neat
