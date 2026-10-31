@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dracory/sb"
+	"github.com/dracory/neat"
 	_ "modernc.org/sqlite"
 )
 
@@ -321,7 +321,7 @@ func TestVersioningCreateIfChanged_WithChange(t *testing.T) {
 		SetEntityType(VERSIONING_TYPE_POST).
 		SetEntityID(entityID).
 		SetOrderBy(COLUMN_CREATED_AT).
-		SetSortOrder(sb.DESC))
+		SetSortOrder(neat.SortDesc))
 	if err != nil {
 		t.Fatal("unexpected error:", err)
 	}

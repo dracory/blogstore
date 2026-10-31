@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/dracory/sb"
+	"github.com/dracory/neat"
 	"github.com/dromara/carbon/v2"
 	_ "modernc.org/sqlite"
 )
@@ -56,7 +56,7 @@ func TestStoreVersioningCreateAndList(t *testing.T) {
 		SetEntityType(VERSIONING_TYPE_POST).
 		SetEntityID(post.GetID()).
 		SetOrderBy(COLUMN_CREATED_AT).
-		SetSortOrder(sb.DESC))
+		SetSortOrder(neat.SortDesc))
 	if err != nil {
 		t.Fatal("unexpected error:", err)
 	}

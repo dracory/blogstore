@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/dracory/sb"
+	"github.com/dracory/neat"
 )
 
 // TestNewPostDefaults tests that NewPost() returns a Post with:
@@ -41,8 +41,8 @@ func TestNewPostDefaults(t *testing.T) {
 		t.Errorf("NewPost() UpdatedAt must not be empty")
 	}
 
-	if got := p.GetSoftDeletedAt(); got != sb.MAX_DATETIME {
-		t.Errorf("NewPost() SoftDeletedAt = %q, want %q", got, sb.MAX_DATETIME)
+	if got := p.GetSoftDeletedAt(); got != neat.MaxDateTime {
+		t.Errorf("NewPost() SoftDeletedAt = %q, want %q", got, neat.MaxDateTime)
 	}
 
 	if got := p.GetFeatured(); got != NO {
